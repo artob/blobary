@@ -13,6 +13,7 @@ documentation = "https://github.com/artob/blobary/blob/master/README.md"
 readme = true
 homepage = "https://github.com/artob/blobary"
 repository = "https://github.com/artob/blobary"
+license = "Unlicense"
 license-file = "UNLICENSE"
 keywords = ["blob", "blob-storage", "blob-store"]
 categories = ["data-structures", "database-implementations", "filesystem"]
