@@ -4,7 +4,7 @@ default-members = ["bin/blobary", "lib/blobary"]
 resolver = "2"
 
 [workspace.package]
-version = "0.0.0"
+version = "0.1.0"
 authors = ["Arto Bendiken"]
 edition = "2021"
 rust-version = "1.73"
@@ -14,9 +14,9 @@ readme = true
 homepage = "https://github.com/artob/blobary"
 repository = "https://github.com/artob/blobary"
 license-file = "UNLICENSE"
-keywords = []
-categories = []
-publish = false
+keywords = ["blob", "blob-storage", "blob-store"]
+categories = ["data-structures", "database-implementations", "filesystem"]
+publish = true
 
 [workspace.dependencies]
 tempfile = "3.8.0"
