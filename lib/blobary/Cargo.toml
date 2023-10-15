@@ -1,0 +1,28 @@
+[package]
+name = "blobary"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description.workspace = true
+documentation.workspace = true
+readme.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license-file.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish.workspace = true
+
+[features]
+default = ["gzip", "lz4", "tracing"]
+gzip = ["dep:libflate"]
+lz4 = ["dep:lz4_flex"]
+tracing = ["dep:tracing"]
+
+[dependencies]
+blake3 = "1.5.0"
+libflate = { version = "2.0.0", optional = true }
+lz4_flex = { version = "0.11.1", optional = true }
+tempfile.workspace = true
+tracing = { version = "0.1.39", optional = true }

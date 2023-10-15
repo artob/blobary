@@ -1,0 +1,33 @@
+[package]
+name = "blobary-cli"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Blobary command-line interface (CLI)"
+documentation.workspace = true
+readme.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license-file.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+
+[dependencies]
+argfile = "0.1.6"
+clap = { version = "4.4.6", features = ["color", "derive", "unicode"] }
+dirs = "5.0.1"
+dotenvy = "0.15.7"
+tempfile.workspace = true
+tokio = { version = "1.33.0", features = ["full"] }
+tracing = "0.1.39"
+tracing-subscriber = "0.3.17"
+wild = "2.2.0"
+
+[[bin]]
+name = "blobary"
+path = "src/main.rs"
