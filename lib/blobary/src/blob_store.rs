@@ -9,12 +9,17 @@ pub trait BlobStore {
     /// Returns the number of blobs in this store.
     fn size(&self) -> usize;
 
-    /// Fetch a blob by its BLAKE3 hash.
+    /// Fetches a blob by its BLAKE3 hash.
     fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Rc<dyn Blob>>;
 
-    /// Fetch a blob by its store ID.
+    /// Fetches a blob by its store ID.
     fn get_by_id(&self, blob_id: BlobID) -> Option<Rc<dyn Blob>>;
 
-    /// Store a blob and return its store ID.
+    /// Stores a blob and return its store ID.
     fn put(&mut self, blob_data: &mut dyn Read) -> Result<BlobID>;
+
+    /// Stores a blob and return its store ID.
+    fn put_string(&mut self, blob_data: impl AsRef<str>) -> Result<BlobID> {
+        self.put(&mut blob_data.as_ref().as_bytes())
+    }
 }
