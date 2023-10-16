@@ -7,15 +7,25 @@ use std::{
     rc::Rc,
 };
 
+pub(crate) struct EphemeralBlobRecord(BlobHash, Rc<dyn Blob>);
+
 #[derive(Default)]
 pub struct EphemeralBlobStore {
     index: HashMap<BlobHash, BlobID>,
-    store: Vec<Rc<dyn Blob>>,
+    store: Vec<EphemeralBlobRecord>,
 }
 
 impl BlobStore for EphemeralBlobStore {
     fn size(&self) -> BlobID {
         self.store.len() as BlobID
+    }
+
+    fn hash_to_id(&self, blob_hash: BlobHash) -> Option<BlobID> {
+        self.index.get(&blob_hash).copied()
+    }
+
+    fn id_to_hash(&self, blob_id: BlobID) -> Option<BlobHash> {
+        self.store.get(blob_id).map(|blob_record| blob_record.0)
     }
 
     fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Rc<dyn Blob>> {
@@ -31,7 +41,7 @@ impl BlobStore for EphemeralBlobStore {
             _ => self
                 .store
                 .get(blob_id - 1)
-                .and_then(|blob| Some(Rc::clone(blob))),
+                .and_then(|blob_record| Some(Rc::clone(&blob_record.1))),
         }
     }
 
@@ -44,8 +54,10 @@ impl BlobStore for EphemeralBlobStore {
             return Ok(*blob_id);
         }
 
+        let blob_record = EphemeralBlobRecord(blob_hash, Rc::new(Cursor::new(buffer)));
+
         let blob_id: BlobID = self.store.len() + 1;
-        self.store.push(Rc::new(Cursor::new(buffer)));
+        self.store.push(blob_record);
         self.index.insert(blob_hash, blob_id);
         Ok(blob_id)
     }

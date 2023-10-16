@@ -8,15 +8,23 @@ pub struct PersistentBlobStore {}
 
 impl BlobStore for PersistentBlobStore {
     fn size(&self) -> BlobID {
-        todo!() // TODO
+        0 // TODO
+    }
+
+    fn hash_to_id(&self, _blob_hash: BlobHash) -> Option<BlobID> {
+        None // TODO
+    }
+
+    fn id_to_hash(&self, _blob_id: BlobID) -> Option<BlobHash> {
+        None // TODO
     }
 
     fn get_by_hash(&self, _blob_hash: BlobHash) -> Option<Rc<dyn Blob>> {
-        todo!() // TODO
+        None // TODO
     }
 
     fn get_by_id(&self, _blob_id: BlobID) -> Option<Rc<dyn Blob>> {
-        todo!() // TODO
+        None // TODO
     }
 
     fn put(&mut self, _blob_data: &mut dyn Read) -> Result<BlobID> {
@@ -30,7 +38,7 @@ mod test {
 
     #[test]
     fn test() {
-        let _store = PersistentBlobStore::default();
-        //assert_eq!(store.size(), 0);
+        let store = PersistentBlobStore::default();
+        assert_eq!(store.size(), 0);
     }
 }

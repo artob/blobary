@@ -9,6 +9,12 @@ pub trait BlobStore {
     /// Returns the number of blobs in this store.
     fn size(&self) -> usize;
 
+    /// TODO
+    fn hash_to_id(&self, blob_hash: BlobHash) -> Option<BlobID>;
+
+    /// TODO
+    fn id_to_hash(&self, blob_id: BlobID) -> Option<BlobHash>;
+
     /// Fetches a blob by its BLAKE3 hash.
     fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Rc<dyn Blob>>;
 
