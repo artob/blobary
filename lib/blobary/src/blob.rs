@@ -2,7 +2,7 @@
 
 use std::io::{Cursor, Read, Seek, Write};
 
-/// A blob's locally-unique integer ID in a [`BlobStore`].
+/// A blob's locally-unique sequence ID in a [`BlobStore`].
 #[allow(unused)]
 pub type BlobID = usize;
 
@@ -22,6 +22,10 @@ impl Blob for Cursor<Vec<u8>> {}
 
 impl Blob for std::fs::File {}
 
+impl Blob for cap_std::fs::File {}
+
 impl BlobMut for Cursor<Vec<u8>> {}
 
 impl BlobMut for std::fs::File {}
+
+impl BlobMut for cap_std::fs::File {}

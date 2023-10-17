@@ -20,4 +20,3 @@ categories = ["data-structures", "database-implementations", "filesystem"]
 publish = true
 
 [workspace.dependencies]
-tempfile = "3.8.0"
