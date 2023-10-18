@@ -2,12 +2,13 @@
 
 use crate::{Blob, BlobHash, BlobID, BlobStore, Result};
 use std::{
+    cell::RefCell,
     collections::HashMap,
     io::{Cursor, Read},
     rc::Rc,
 };
 
-pub(crate) struct EphemeralBlobRecord(BlobHash, Rc<dyn Blob>);
+pub(crate) struct EphemeralBlobRecord(BlobHash, Rc<RefCell<dyn Blob>>);
 
 #[derive(Default)]
 pub struct EphemeralBlobStore {
@@ -28,14 +29,14 @@ impl BlobStore for EphemeralBlobStore {
         self.store.get(blob_id).map(|blob_record| blob_record.0)
     }
 
-    fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Rc<dyn Blob>> {
+    fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Rc<RefCell<dyn Blob>>> {
         match self.index.get(&blob_hash) {
             None => None,
             Some(blob_id) => self.get_by_id(*blob_id),
         }
     }
 
-    fn get_by_id(&self, blob_id: BlobID) -> Option<Rc<dyn Blob>> {
+    fn get_by_id(&self, blob_id: BlobID) -> Option<Rc<RefCell<dyn Blob>>> {
         match blob_id {
             0 => None,
             _ => self
@@ -54,7 +55,8 @@ impl BlobStore for EphemeralBlobStore {
             return Ok(*blob_id);
         }
 
-        let blob_record = EphemeralBlobRecord(blob_hash, Rc::new(Cursor::new(buffer)));
+        let blob_record =
+            EphemeralBlobRecord(blob_hash, Rc::new(RefCell::new(Cursor::new(buffer))));
 
         let blob_id: BlobID = self.store.len() + 1;
         self.store.push(blob_record);

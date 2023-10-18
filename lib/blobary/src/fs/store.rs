@@ -97,16 +97,16 @@ impl BlobStore for PersistentBlobStore {
         Some(blob_record.0.into())
     }
 
-    fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Rc<dyn Blob>> {
+    fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Rc<RefCell<dyn Blob>>> {
         if !self.lookup_id.contains_key(&blob_hash) {
             return None;
         }
         let blob_filename = blob_hash.to_hex();
         let blob_file = self.dir.open(blob_filename.as_str()).ok()?;
-        Some(Rc::new(blob_file))
+        Some(Rc::new(RefCell::new(blob_file)))
     }
 
-    fn get_by_id(&self, blob_id: BlobID) -> Option<Rc<dyn Blob>> {
+    fn get_by_id(&self, blob_id: BlobID) -> Option<Rc<RefCell<dyn Blob>>> {
         self.get_by_hash(self.id_to_hash(blob_id)?)
     }
 

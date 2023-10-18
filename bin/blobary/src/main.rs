@@ -4,6 +4,7 @@ mod config;
 mod sysexits;
 
 use crate::sysexits::{exit, Sysexits};
+use blobary::{BlobHash, BlobStore, PersistentBlobStore};
 use clap::{Parser, Subcommand};
 use dotenvy::dotenv;
 use shadow_rs::shadow;
@@ -152,12 +153,29 @@ fn add(_path: &PathBuf) -> Sysexits {
     Sysexits::EX_OK // TODO
 }
 
-fn put(_text: &String) -> Sysexits {
-    Sysexits::EX_OK // TODO
+fn put(text: &String) -> Sysexits {
+    let mut store = PersistentBlobStore::open_cwd().expect("open cwd");
+    if let Err(_err) = store.put_string(text) {
+        return Sysexits::EX_IOERR;
+    }
+    Sysexits::EX_OK
 }
 
-fn get(_id: &String) -> Sysexits {
-    Sysexits::EX_OK // TODO
+fn get(id: &String) -> Sysexits {
+    let store = PersistentBlobStore::open_cwd().expect("open cwd");
+    let id = BlobHash::from_hex(id).expect("parse hash");
+    match store.get_by_hash(id) {
+        None => Sysexits::EX_NOINPUT,
+        Some(blob) => {
+            let mut blob = blob.borrow_mut();
+            let mut buffer = String::new();
+            if let Err(_err) = blob.read_to_string(&mut buffer) {
+                return Sysexits::EX_IOERR;
+            }
+            println!("{}", buffer);
+            Sysexits::EX_OK
+        }
+    }
 }
 
 fn remove(_id: &String) -> Sysexits {
