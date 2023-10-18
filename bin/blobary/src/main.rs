@@ -4,11 +4,11 @@ mod config;
 mod sysexits;
 
 use crate::sysexits::{exit, Sysexits};
-use blobary::{BlobHash, BlobStore, PersistentBlobStore};
+use blobary::{BlobHash, BlobHasher, BlobStore, PersistentBlobStore};
 use clap::{Parser, Subcommand};
 use dotenvy::dotenv;
 use shadow_rs::shadow;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 shadow!(build);
 
@@ -133,7 +133,11 @@ fn config() -> Sysexits {
     Sysexits::EX_OK // TODO
 }
 
-fn hash(_path: &PathBuf) -> Sysexits {
+fn hash(path: impl AsRef<Path>) -> Sysexits {
+    let mut hasher = BlobHasher::new();
+    hasher.update_mmap_rayon(path).expect("mmap");
+    let hash = hasher.finalize();
+    println!("{}", hash.to_hex());
     Sysexits::EX_OK // TODO
 }
 

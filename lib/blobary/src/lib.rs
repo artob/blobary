@@ -5,9 +5,11 @@
 mod blob;
 mod blob_store;
 mod fs;
+mod hasher;
 mod ram;
 
 pub use blob::*;
 pub use blob_store::*;
 pub use fs::*;
+pub use hasher::*;
 pub use ram::*;

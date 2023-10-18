@@ -1,6 +1,8 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::{Blob, BlobHash, BlobID, BlobStore, File, PersistentBlobRecord, Result, RECORD_SIZE};
+use crate::{
+    Blob, BlobHash, BlobHasher, BlobID, BlobStore, File, PersistentBlobRecord, Result, RECORD_SIZE,
+};
 use cap_std::{
     ambient_authority,
     fs::{Dir, Permissions},
@@ -116,7 +118,7 @@ impl BlobStore for PersistentBlobStore {
         let blob_size = std::io::copy(blob_data, &mut temp_file)?;
 
         // Compute the BLAKE3 hash for the blob data:
-        let mut blob_hasher = blake3::Hasher::new();
+        let mut blob_hasher = BlobHasher::new();
         temp_file.rewind()?;
         std::io::copy(&mut temp_file, &mut blob_hasher)?;
 

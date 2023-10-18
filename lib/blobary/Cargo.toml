@@ -22,7 +22,7 @@ tracing = ["dep:tracing"]
 zeroize = ["dep:zeroize"]
 
 [dependencies]
-blake3 = "1.5.0"
+blake3 = { version = "1.5.0", features = ["mmap", "neon", "rayon", "zeroize"]}
 cap-std = "2.0.0"
 cap-tempfile = "2.0.0"
 libflate = { version = "2.0.0", optional = true }

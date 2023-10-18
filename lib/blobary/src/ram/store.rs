@@ -1,6 +1,6 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::{Blob, BlobHash, BlobID, BlobStore, Result};
+use crate::{hash, Blob, BlobHash, BlobID, BlobStore, Result};
 use std::{
     cell::RefCell,
     collections::HashMap,
@@ -50,7 +50,7 @@ impl BlobStore for EphemeralBlobStore {
         let mut buffer = Vec::new();
         blob_data.read_to_end(&mut buffer)?;
 
-        let blob_hash = blake3::hash(&buffer);
+        let blob_hash = hash(&buffer);
         if let Some(blob_id) = self.index.get(&blob_hash) {
             return Ok(*blob_id);
         }
