@@ -1,7 +1,7 @@
 // This is free and unencumbered software released into the public domain.
 
 use crate::blob::{Blob, BlobHash, BlobID};
-use std::{cell::RefCell, io::Read, rc::Rc, path::Path};
+use std::{cell::RefCell, io::Read, path::Path, rc::Rc};
 
 pub use std::io::Result;
 

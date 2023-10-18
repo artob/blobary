@@ -1,5 +1,6 @@
 // This is free and unencumbered software released into the public domain.
 
+use crate::BlobHasher;
 use std::io::{Cursor, Read, Seek, Write};
 
 /// A blob's locally-unique sequence ID in a [`BlobStore`].
@@ -11,7 +12,20 @@ pub type BlobID = usize;
 pub type BlobHash = blake3::Hash;
 
 /// A blob is a unique byte sequence of data.
-pub trait Blob: Seek + Read {}
+pub trait Blob: Seek + Read {
+    /// Returns the blob's byte size.
+    fn size(&mut self) -> Result<u64, std::io::Error> {
+        self.stream_len()
+    }
+
+    /// Returns the blob's hash.
+    fn hash(&mut self) -> Result<BlobHash, std::io::Error> {
+        let mut hasher = BlobHasher::new();
+        std::io::copy(self, &mut hasher)?;
+        let hash = hasher.finalize();
+        Ok(hash)
+    }
+}
 
 /// A mutable blob is a unique byte sequence of data.
 pub trait BlobMut: Blob + Write {}

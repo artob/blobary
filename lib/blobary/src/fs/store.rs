@@ -72,13 +72,13 @@ impl PersistentBlobStore {
 
     pub(crate) fn read_record(&self, blob_id: BlobID) -> Option<PersistentBlobRecord> {
         let index_file = self.index_file.borrow();
-
         let record_id: usize = blob_id - 1;
         let mut buffer = [0u8; RECORD_SIZE];
-        index_file
-            .read_exact_at(&mut buffer, (record_id * RECORD_SIZE) as u64)
-            .err()?;
-
+        match index_file.read_exact_at(&mut buffer, (record_id * RECORD_SIZE) as u64) {
+            Ok(()) => (),
+            Err(err) if err.kind() == UnexpectedEof => return None,
+            Err(_err) => return None,
+        }
         let record = PersistentBlobRecord::read_from(&buffer)?;
         Some(record)
     }

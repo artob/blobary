@@ -8,7 +8,11 @@ use blobary::{BlobHash, BlobHasher, BlobStore, PersistentBlobStore};
 use clap::{Parser, Subcommand};
 use dotenvy::dotenv;
 use shadow_rs::shadow;
-use std::path::{Path, PathBuf};
+use std::{
+    io::stdout,
+    ops::DerefMut,
+    path::{Path, PathBuf},
+};
 
 shadow!(build);
 
@@ -43,24 +47,26 @@ enum Commands {
     Config {},
     /// Print out the hash of a file
     #[clap(aliases = &["id", "identify"])]
-    Hash { path: PathBuf },
+    Hash { paths: Vec<PathBuf> },
     /// Initialize `$HOME/.config/blobary`
     Init {},
     /// Check the repository integrity
     Check {},
+    /// Compact and compress the repository
+    Compact {},
     /// List blobs in the repository
     #[clap(alias = "ls")]
     List {},
     /// Add a file to the repository
-    Add { path: PathBuf },
+    Add { paths: Vec<PathBuf> },
     /// Put text into the repository
     Put { text: String },
     /// Fetch a blob by its hash
     #[clap(alias = "cat")]
-    Get { id: String },
+    Get { ids: Vec<String> },
     /// Remove a blob by its hash
     #[clap(aliases = &["rm", "del", "delete"])]
-    Remove { id: String },
+    Remove { ids: Vec<String> },
     /// Pull blobs from another repository
     Pull { url: String },
     /// Push blobs to another repository
@@ -68,9 +74,9 @@ enum Commands {
     /// Sync blobs with another repository
     Sync { url: String },
     /// TODO
-    Import { path: PathBuf },
+    Import { paths: Vec<PathBuf> },
     /// TODO
-    Export { path: PathBuf },
+    Export { path: Option<PathBuf> },
 }
 
 pub fn main() {
@@ -98,18 +104,19 @@ pub fn main() {
 
     let result = match &options.command.expect("subcommand is required") {
         Commands::Config {} => Commands::config(),
-        Commands::Hash { path } => Commands::hash(path),
+        Commands::Hash { paths } => Commands::hash(paths),
         Commands::Init {} => Commands::init(),
         Commands::Check {} => Commands::check(),
+        Commands::Compact {} => Commands::compact(),
         Commands::List {} => Commands::list(),
-        Commands::Add { path } => Commands::add(path),
+        Commands::Add { paths } => Commands::add(paths),
         Commands::Put { text } => Commands::put(text),
-        Commands::Get { id } => Commands::get(id),
-        Commands::Remove { id } => Commands::remove(id),
+        Commands::Get { ids } => Commands::get(ids),
+        Commands::Remove { ids } => Commands::remove(ids),
         Commands::Pull { url } => Commands::pull(url),
         Commands::Push { url } => Commands::push(url),
         Commands::Sync { url } => Commands::sync(url),
-        Commands::Import { path } => Commands::import(path),
+        Commands::Import { paths } => Commands::import(paths),
         Commands::Export { path } => Commands::export(path),
     };
 
@@ -144,13 +151,19 @@ impl Commands {
         Ok(()) // TODO
     }
 
-    fn hash(path: impl AsRef<Path>) -> Result<(), Sysexits> {
-        let mut hasher = BlobHasher::new();
-        if let Err(_err) = hasher.update_mmap(path) {
-            return Err(Sysexits::EX_IOERR);
+    fn hash(paths: &Vec<impl AsRef<Path>>) -> Result<(), Sysexits> {
+        if paths.is_empty() {
+            return Err(Sysexits::EX_USAGE); // TODO: stdin
+        } else {
+            for path in paths {
+                let mut hasher = BlobHasher::new();
+                if let Err(_err) = hasher.update_mmap(path) {
+                    return Err(Sysexits::EX_IOERR);
+                }
+                let hash = hasher.finalize();
+                println!("{}", hash.to_hex());
+            }
         }
-        let hash = hasher.finalize();
-        println!("{}", hash.to_hex());
         Ok(())
     }
 
@@ -163,15 +176,30 @@ impl Commands {
         Ok(()) // TODO
     }
 
+    fn compact() -> Result<(), Sysexits> {
+        let _store = _open()?;
+        Ok(()) // TODO
+    }
+
     fn list() -> Result<(), Sysexits> {
         let _store = _open()?;
         Ok(()) // TODO
     }
 
-    fn add(path: impl AsRef<Path>) -> Result<(), Sysexits> {
-        let mut store = _open()?;
-        if let Err(_err) = store.put_file(path) {
-            return Err(Sysexits::EX_IOERR);
+    fn add(paths: &Vec<impl AsRef<Path>>) -> Result<(), Sysexits> {
+        if paths.is_empty() {
+            return Err(Sysexits::EX_USAGE); // TODO: stdin
+        } else {
+            for path in paths {
+                let mut store = _open()?;
+                let result = store.put_file(path);
+                if let Err(_err) = result {
+                    return Err(Sysexits::EX_IOERR);
+                }
+                let blob_id = result.unwrap();
+                let blob_hash = store.id_to_hash(blob_id).unwrap();
+                println!("{}", blob_hash.to_hex());
+            }
         }
         Ok(())
     }
@@ -184,26 +212,28 @@ impl Commands {
         Ok(())
     }
 
-    fn get(id: &String) -> Result<(), Sysexits> {
+    fn get(ids: &Vec<String>) -> Result<(), Sysexits> {
         let store = _open()?;
-        let id = BlobHash::from_hex(id).expect("parse hash");
-        match store.get_by_hash(id) {
-            None => Err(Sysexits::EX_NOINPUT),
-            Some(blob) => {
-                let mut blob = blob.borrow_mut();
-                let mut buffer = String::new();
-                if let Err(_err) = blob.read_to_string(&mut buffer) {
-                    return Err(Sysexits::EX_IOERR);
+        for id in ids {
+            let id = BlobHash::from_hex(id).expect("parse hash");
+            match store.get_by_hash(id) {
+                None => return Err(Sysexits::EX_NOINPUT),
+                Some(blob) => {
+                    let mut blob = blob.borrow_mut();
+                    let mut stdout = stdout().lock();
+                    std::io::copy(blob.deref_mut(), &mut stdout).unwrap();
                 }
-                print!("{}", buffer);
-                Ok(())
             }
         }
+        Ok(())
     }
 
-    fn remove(_id: &String) -> Result<(), Sysexits> {
+    fn remove(ids: &Vec<String>) -> Result<(), Sysexits> {
         let _store = _open()?;
-        Ok(()) // TODO
+        for _id in ids {
+            // TODO
+        }
+        Ok(())
     }
 
     fn pull(_url: &String) -> Result<(), Sysexits> {
@@ -221,13 +251,25 @@ impl Commands {
         Ok(()) // TODO
     }
 
-    fn import(_path: &PathBuf) -> Result<(), Sysexits> {
+    fn import(paths: &Vec<impl AsRef<Path>>) -> Result<(), Sysexits> {
         let _store = _open()?;
-        Ok(()) // TODO
+        if paths.is_empty() {
+            return Err(Sysexits::EX_USAGE); // TODO: stdin
+        } else {
+            for _path in paths {
+                // TODO
+            }
+        }
+        Ok(())
     }
 
-    fn export(_path: &PathBuf) -> Result<(), Sysexits> {
+    fn export(path: &Option<impl AsRef<Path>>) -> Result<(), Sysexits> {
         let _store = _open()?;
-        Ok(()) // TODO
+        if path.is_none() {
+            return Err(Sysexits::EX_USAGE); // TODO: stdin
+        } else {
+            // TODO
+        }
+        Ok(())
     }
 }

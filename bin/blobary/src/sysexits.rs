@@ -1,5 +1,8 @@
 // This is free and unencumbered software released into the public domain.
 
+#[allow(unused)]
+type Result = std::result::Result<(), Sysexits>;
+
 #[derive(Default)]
 #[allow(non_camel_case_types, dead_code)]
 pub enum Sysexits {
