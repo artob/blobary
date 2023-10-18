@@ -1,7 +1,8 @@
 // This is free and unencumbered software released into the public domain.
 
 use crate::{
-    Blob, BlobHash, BlobHasher, BlobID, BlobStore, File, PersistentBlobRecord, Result, RECORD_SIZE,
+    Blob, BlobHash, BlobHasher, BlobID, BlobStore, BlobStoreExt, File, PersistentBlobRecord,
+    Result, RECORD_SIZE,
 };
 use cap_std::{
     ambient_authority,
@@ -57,7 +58,7 @@ impl PersistentBlobStore {
             match index_file.read_exact(&mut buffer) {
                 Ok(_) => (),
                 Err(err) if err.kind() == UnexpectedEof => break,
-                Err(err) => return Err(err.into()),
+                Err(err) => return Err(err),
             }
             let record = PersistentBlobRecord::read_from(&buffer).unwrap();
             lookup_id.insert(record.0.into(), lookup_id.len() + 1);
@@ -147,6 +148,8 @@ impl BlobStore for PersistentBlobStore {
         Ok(blob_id)
     }
 }
+
+impl BlobStoreExt for PersistentBlobStore {}
 
 #[cfg(test)]
 mod test {

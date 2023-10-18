@@ -4,7 +4,7 @@ mod config;
 mod sysexits;
 
 use crate::sysexits::{exit, Sysexits};
-use blobary::{BlobHash, BlobHasher, BlobStore, PersistentBlobStore};
+use blobary::{BlobHash, BlobHasher, BlobIterator, BlobStore, BlobStoreExt, PersistentBlobStore};
 use clap::{Parser, Subcommand};
 use dotenvy::dotenv;
 use shadow_rs::shadow;
@@ -102,22 +102,23 @@ pub fn main() {
         // TODO: configure tracing
     }
 
-    let result = match &options.command.expect("subcommand is required") {
-        Commands::Config {} => Commands::config(),
-        Commands::Hash { paths } => Commands::hash(paths),
-        Commands::Init {} => Commands::init(),
-        Commands::Check {} => Commands::check(),
-        Commands::Compact {} => Commands::compact(),
-        Commands::List {} => Commands::list(),
-        Commands::Add { paths } => Commands::add(paths),
-        Commands::Put { text } => Commands::put(text),
-        Commands::Get { ids } => Commands::get(ids),
-        Commands::Remove { ids } => Commands::remove(ids),
-        Commands::Pull { url } => Commands::pull(url),
-        Commands::Push { url } => Commands::push(url),
-        Commands::Sync { url } => Commands::sync(url),
-        Commands::Import { paths } => Commands::import(paths),
-        Commands::Export { path } => Commands::export(path),
+    let subcommand = &options.command;
+    let result = match subcommand.as_ref().expect("subcommand is required") {
+        Commands::Config {} => Commands::config(&options),
+        Commands::Hash { paths } => Commands::hash(paths, &options),
+        Commands::Init {} => Commands::init(&options),
+        Commands::Check {} => Commands::check(&options),
+        Commands::Compact {} => Commands::compact(&options),
+        Commands::List {} => Commands::list(&options),
+        Commands::Add { paths } => Commands::add(paths, &options),
+        Commands::Put { text } => Commands::put(text, &options),
+        Commands::Get { ids } => Commands::get(ids, &options),
+        Commands::Remove { ids } => Commands::remove(ids, &options),
+        Commands::Pull { url } => Commands::pull(url, &options),
+        Commands::Push { url } => Commands::push(url, &options),
+        Commands::Sync { url } => Commands::sync(url, &options),
+        Commands::Import { paths } => Commands::import(paths, &options),
+        Commands::Export { path } => Commands::export(path, &options),
     };
 
     exit(result.err().unwrap_or_default());
@@ -147,11 +148,11 @@ fn license() -> Result<(), Sysexits> {
 }
 
 impl Commands {
-    fn config() -> Result<(), Sysexits> {
+    fn config(_options: &Options) -> Result<(), Sysexits> {
         Ok(()) // TODO
     }
 
-    fn hash(paths: &Vec<impl AsRef<Path>>) -> Result<(), Sysexits> {
+    fn hash(paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
         if paths.is_empty() {
             return Err(Sysexits::EX_USAGE); // TODO: stdin
         } else {
@@ -167,26 +168,41 @@ impl Commands {
         Ok(())
     }
 
-    fn init() -> Result<(), Sysexits> {
+    fn init(_options: &Options) -> Result<(), Sysexits> {
         Ok(()) // TODO
     }
 
-    fn check() -> Result<(), Sysexits> {
+    fn check(_options: &Options) -> Result<(), Sysexits> {
         let _store = _open()?;
         Ok(()) // TODO
     }
 
-    fn compact() -> Result<(), Sysexits> {
+    fn compact(_options: &Options) -> Result<(), Sysexits> {
         let _store = _open()?;
         Ok(()) // TODO
     }
 
-    fn list() -> Result<(), Sysexits> {
-        let _store = _open()?;
-        Ok(()) // TODO
+    fn list(options: &Options) -> Result<(), Sysexits> {
+        let mut store = _open()?;
+        let blobs = BlobIterator::new(&mut store);
+        for blob in blobs {
+            let mut blob = blob.borrow_mut();
+            let blob_hash = blob.hash()?;
+            let blob_hash = blob_hash.to_hex();
+            if options.debug {
+                let blob_size = blob.size()?;
+                println!("{} {}", blob_hash, blob_size); // TODO
+            } else if options.verbose {
+                let blob_size = blob.size()?;
+                println!("{} {}", blob_hash, blob_size);
+            } else {
+                println!("{}", blob_hash);
+            }
+        }
+        Ok(())
     }
 
-    fn add(paths: &Vec<impl AsRef<Path>>) -> Result<(), Sysexits> {
+    fn add(paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
         if paths.is_empty() {
             return Err(Sysexits::EX_USAGE); // TODO: stdin
         } else {
@@ -204,7 +220,7 @@ impl Commands {
         Ok(())
     }
 
-    fn put(text: &String) -> Result<(), Sysexits> {
+    fn put(text: &String, _options: &Options) -> Result<(), Sysexits> {
         let mut store = _open()?;
         if let Err(_err) = store.put_string(text) {
             return Err(Sysexits::EX_IOERR);
@@ -212,7 +228,7 @@ impl Commands {
         Ok(())
     }
 
-    fn get(ids: &Vec<String>) -> Result<(), Sysexits> {
+    fn get(ids: &Vec<String>, _options: &Options) -> Result<(), Sysexits> {
         let store = _open()?;
         for id in ids {
             let id = BlobHash::from_hex(id).expect("parse hash");
@@ -228,7 +244,7 @@ impl Commands {
         Ok(())
     }
 
-    fn remove(ids: &Vec<String>) -> Result<(), Sysexits> {
+    fn remove(ids: &Vec<String>, _options: &Options) -> Result<(), Sysexits> {
         let _store = _open()?;
         for _id in ids {
             // TODO
@@ -236,22 +252,22 @@ impl Commands {
         Ok(())
     }
 
-    fn pull(_url: &String) -> Result<(), Sysexits> {
+    fn pull(_url: &String, _options: &Options) -> Result<(), Sysexits> {
         let _store = _open()?;
         Ok(()) // TODO
     }
 
-    fn push(_url: &String) -> Result<(), Sysexits> {
+    fn push(_url: &String, _options: &Options) -> Result<(), Sysexits> {
         let _store = _open()?;
         Ok(()) // TODO
     }
 
-    fn sync(_url: &String) -> Result<(), Sysexits> {
+    fn sync(_url: &String, _options: &Options) -> Result<(), Sysexits> {
         let _store = _open()?;
         Ok(()) // TODO
     }
 
-    fn import(paths: &Vec<impl AsRef<Path>>) -> Result<(), Sysexits> {
+    fn import(paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
         let _store = _open()?;
         if paths.is_empty() {
             return Err(Sysexits::EX_USAGE); // TODO: stdin
@@ -263,7 +279,7 @@ impl Commands {
         Ok(())
     }
 
-    fn export(path: &Option<impl AsRef<Path>>) -> Result<(), Sysexits> {
+    fn export(path: &Option<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
         let _store = _open()?;
         if path.is_none() {
             return Err(Sysexits::EX_USAGE); // TODO: stdin

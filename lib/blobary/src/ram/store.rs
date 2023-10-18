@@ -1,6 +1,6 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::{hash, Blob, BlobHash, BlobID, BlobStore, Result};
+use crate::{hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, Result};
 use std::{
     cell::RefCell,
     collections::HashMap,
@@ -42,7 +42,7 @@ impl BlobStore for EphemeralBlobStore {
             _ => self
                 .store
                 .get(blob_id - 1)
-                .and_then(|blob_record| Some(Rc::clone(&blob_record.1))),
+                .map(|blob_record| Rc::clone(&blob_record.1)),
         }
     }
 
@@ -64,6 +64,8 @@ impl BlobStore for EphemeralBlobStore {
         Ok(blob_id)
     }
 }
+
+impl BlobStoreExt for EphemeralBlobStore {}
 
 #[cfg(test)]
 mod test {

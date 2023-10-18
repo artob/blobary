@@ -1,7 +1,7 @@
 // This is free and unencumbered software released into the public domain.
 
 #[allow(unused)]
-type Result = std::result::Result<(), Sysexits>;
+pub type Result = std::result::Result<(), Sysexits>;
 
 #[derive(Default)]
 #[allow(non_camel_case_types, dead_code)]
@@ -23,6 +23,35 @@ pub enum Sysexits {
     EX_PROTOCOL = 76,
     EX_NOPERM = 77,
     EX_CONFIG = 78,
+}
+
+impl From<std::io::Error> for Sysexits {
+    fn from(err: std::io::Error) -> Self {
+        use std::io::ErrorKind::*;
+        match err.kind() {
+            AddrInUse => Sysexits::EX_TEMPFAIL,
+            AddrNotAvailable => Sysexits::EX_USAGE,
+            AlreadyExists => Sysexits::EX_CANTCREAT,
+            BrokenPipe => Sysexits::EX_IOERR,
+            ConnectionAborted => Sysexits::EX_PROTOCOL,
+            ConnectionRefused => Sysexits::EX_UNAVAILABLE,
+            ConnectionReset => Sysexits::EX_PROTOCOL,
+            Interrupted => Sysexits::EX_TEMPFAIL,
+            InvalidData => Sysexits::EX_DATAERR,
+            InvalidInput => Sysexits::EX_DATAERR,
+            NotConnected => Sysexits::EX_PROTOCOL,
+            NotFound => Sysexits::EX_NOINPUT,
+            Other => Sysexits::EX_UNAVAILABLE,
+            OutOfMemory => Sysexits::EX_TEMPFAIL,
+            PermissionDenied => Sysexits::EX_NOPERM,
+            TimedOut => Sysexits::EX_IOERR,
+            UnexpectedEof => Sysexits::EX_IOERR,
+            Unsupported => Sysexits::EX_SOFTWARE,
+            WouldBlock => Sysexits::EX_IOERR,
+            WriteZero => Sysexits::EX_IOERR,
+            _ => Sysexits::EX_UNAVAILABLE, // catch-all
+        }
+    }
 }
 
 pub fn exit(code: Sysexits) -> ! {
