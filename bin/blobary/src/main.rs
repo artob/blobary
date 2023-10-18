@@ -169,8 +169,11 @@ impl Commands {
     }
 
     fn add(path: impl AsRef<Path>) -> Result<(), Sysexits> {
-        let _store = _open()?;
-        Ok(()) // TODO
+        let mut store = _open()?;
+        if let Err(_err) = store.put_file(path) {
+            return Err(Sysexits::EX_IOERR);
+        }
+        Ok(())
     }
 
     fn put(text: &String) -> Result<(), Sysexits> {
@@ -192,7 +195,7 @@ impl Commands {
                 if let Err(_err) = blob.read_to_string(&mut buffer) {
                     return Err(Sysexits::EX_IOERR);
                 }
-                println!("{}", buffer);
+                print!("{}", buffer);
                 Ok(())
             }
         }
