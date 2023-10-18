@@ -85,123 +85,146 @@ pub fn main() {
     let options = Options::parse_from(args);
 
     if options.version {
-        exit(version());
+        exit(version().err().unwrap_or_default());
     }
 
     if options.license {
-        exit(license());
+        exit(license().err().unwrap_or_default());
     }
 
     if options.verbose || options.debug {
         // TODO: configure tracing
     }
 
-    let result = match &options.command.expect("command is required") {
-        Commands::Config {} => config(),
-        Commands::Hash { path } => hash(path),
-        Commands::Init {} => init(),
-        Commands::Check {} => check(),
-        Commands::List {} => list(),
-        Commands::Add { path } => add(path),
-        Commands::Put { text } => put(text),
-        Commands::Get { id } => get(id),
-        Commands::Remove { id } => remove(id),
-        Commands::Pull { url } => pull(url),
-        Commands::Push { url } => push(url),
-        Commands::Sync { url } => sync(url),
-        Commands::Import { path } => import(path),
-        Commands::Export { path } => export(path),
+    let result = match &options.command.expect("subcommand is required") {
+        Commands::Config {} => Commands::config(),
+        Commands::Hash { path } => Commands::hash(path),
+        Commands::Init {} => Commands::init(),
+        Commands::Check {} => Commands::check(),
+        Commands::List {} => Commands::list(),
+        Commands::Add { path } => Commands::add(path),
+        Commands::Put { text } => Commands::put(text),
+        Commands::Get { id } => Commands::get(id),
+        Commands::Remove { id } => Commands::remove(id),
+        Commands::Pull { url } => Commands::pull(url),
+        Commands::Push { url } => Commands::push(url),
+        Commands::Sync { url } => Commands::sync(url),
+        Commands::Import { path } => Commands::import(path),
+        Commands::Export { path } => Commands::export(path),
     };
 
-    exit(result);
+    exit(result.err().unwrap_or_default());
 }
 
-fn version() -> Sysexits {
-    let (date, _) = build::BUILD_TIME_3339.split_once('T').unwrap();
-    let version_string = format!("{} ({} {})", build::PKG_VERSION, date, build::SHORT_COMMIT,);
-    println!("Blobary {}", version_string);
-    Sysexits::EX_OK
-}
-
-fn license() -> Sysexits {
-    let license = include_str!("../../../UNLICENSE");
-    println!("{}", license.trim_end());
-    Sysexits::EX_OK
-}
-
-fn config() -> Sysexits {
-    Sysexits::EX_OK // TODO
-}
-
-fn hash(path: impl AsRef<Path>) -> Sysexits {
-    let mut hasher = BlobHasher::new();
-    hasher.update_mmap_rayon(path).expect("mmap");
-    let hash = hasher.finalize();
-    println!("{}", hash.to_hex());
-    Sysexits::EX_OK // TODO
-}
-
-fn init() -> Sysexits {
-    Sysexits::EX_OK // TODO
-}
-
-fn check() -> Sysexits {
-    Sysexits::EX_OK // TODO
-}
-
-fn list() -> Sysexits {
-    Sysexits::EX_OK // TODO
-}
-
-fn add(_path: &PathBuf) -> Sysexits {
-    Sysexits::EX_OK // TODO
-}
-
-fn put(text: &String) -> Sysexits {
-    let mut store = PersistentBlobStore::open_cwd().expect("open cwd");
-    if let Err(_err) = store.put_string(text) {
-        return Sysexits::EX_IOERR;
-    }
-    Sysexits::EX_OK
-}
-
-fn get(id: &String) -> Sysexits {
-    let store = PersistentBlobStore::open_cwd().expect("open cwd");
-    let id = BlobHash::from_hex(id).expect("parse hash");
-    match store.get_by_hash(id) {
-        None => Sysexits::EX_NOINPUT,
-        Some(blob) => {
-            let mut blob = blob.borrow_mut();
-            let mut buffer = String::new();
-            if let Err(_err) = blob.read_to_string(&mut buffer) {
-                return Sysexits::EX_IOERR;
-            }
-            println!("{}", buffer);
-            Sysexits::EX_OK
+fn _open() -> Result<PersistentBlobStore, Sysexits> {
+    match PersistentBlobStore::open_cwd() {
+        Ok(store) => Ok(store),
+        Err(err) => {
+            eprintln!("{}: {}", "blobary", err);
+            Err(Sysexits::EX_IOERR)
         }
     }
 }
 
-fn remove(_id: &String) -> Sysexits {
-    Sysexits::EX_OK // TODO
+fn version() -> Result<(), Sysexits> {
+    let (date, _) = build::BUILD_TIME_3339.split_once('T').unwrap();
+    let version_string = format!("{} ({} {})", build::PKG_VERSION, date, build::SHORT_COMMIT,);
+    println!("Blobary {}", version_string);
+    Ok(())
 }
 
-fn pull(_url: &String) -> Sysexits {
-    Sysexits::EX_OK // TODO
+fn license() -> Result<(), Sysexits> {
+    let license = include_str!("../../../UNLICENSE");
+    println!("{}", license.trim_end());
+    Ok(())
 }
 
-fn push(_url: &String) -> Sysexits {
-    Sysexits::EX_OK // TODO
-}
+impl Commands {
+    fn config() -> Result<(), Sysexits> {
+        Ok(()) // TODO
+    }
 
-fn sync(_url: &String) -> Sysexits {
-    Sysexits::EX_OK // TODO
-}
+    fn hash(path: impl AsRef<Path>) -> Result<(), Sysexits> {
+        let mut hasher = BlobHasher::new();
+        if let Err(_err) = hasher.update_mmap(path) {
+            return Err(Sysexits::EX_IOERR);
+        }
+        let hash = hasher.finalize();
+        println!("{}", hash.to_hex());
+        Ok(())
+    }
 
-fn import(_path: &PathBuf) -> Sysexits {
-    Sysexits::EX_OK // TODO
-}
+    fn init() -> Result<(), Sysexits> {
+        Ok(()) // TODO
+    }
 
-fn export(_path: &PathBuf) -> Sysexits {
-    Sysexits::EX_OK // TODO
+    fn check() -> Result<(), Sysexits> {
+        let _store = _open()?;
+        Ok(()) // TODO
+    }
+
+    fn list() -> Result<(), Sysexits> {
+        let _store = _open()?;
+        Ok(()) // TODO
+    }
+
+    fn add(path: impl AsRef<Path>) -> Result<(), Sysexits> {
+        let _store = _open()?;
+        Ok(()) // TODO
+    }
+
+    fn put(text: &String) -> Result<(), Sysexits> {
+        let mut store = _open()?;
+        if let Err(_err) = store.put_string(text) {
+            return Err(Sysexits::EX_IOERR);
+        }
+        Ok(())
+    }
+
+    fn get(id: &String) -> Result<(), Sysexits> {
+        let store = _open()?;
+        let id = BlobHash::from_hex(id).expect("parse hash");
+        match store.get_by_hash(id) {
+            None => Err(Sysexits::EX_NOINPUT),
+            Some(blob) => {
+                let mut blob = blob.borrow_mut();
+                let mut buffer = String::new();
+                if let Err(_err) = blob.read_to_string(&mut buffer) {
+                    return Err(Sysexits::EX_IOERR);
+                }
+                println!("{}", buffer);
+                Ok(())
+            }
+        }
+    }
+
+    fn remove(_id: &String) -> Result<(), Sysexits> {
+        let _store = _open()?;
+        Ok(()) // TODO
+    }
+
+    fn pull(_url: &String) -> Result<(), Sysexits> {
+        let _store = _open()?;
+        Ok(()) // TODO
+    }
+
+    fn push(_url: &String) -> Result<(), Sysexits> {
+        let _store = _open()?;
+        Ok(()) // TODO
+    }
+
+    fn sync(_url: &String) -> Result<(), Sysexits> {
+        let _store = _open()?;
+        Ok(()) // TODO
+    }
+
+    fn import(_path: &PathBuf) -> Result<(), Sysexits> {
+        let _store = _open()?;
+        Ok(()) // TODO
+    }
+
+    fn export(_path: &PathBuf) -> Result<(), Sysexits> {
+        let _store = _open()?;
+        Ok(()) // TODO
+    }
 }

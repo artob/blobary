@@ -1,7 +1,9 @@
 // This is free and unencumbered software released into the public domain.
 
+#[derive(Default)]
 #[allow(non_camel_case_types, dead_code)]
 pub enum Sysexits {
+    #[default]
     EX_OK = 0,
     EX_USAGE = 64,
     EX_DATAERR = 65,
