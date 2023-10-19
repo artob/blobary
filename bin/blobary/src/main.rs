@@ -1,19 +1,23 @@
 // This is free and unencumbered software released into the public domain.
 
 mod config;
+mod input;
+mod output;
+mod store;
 mod sysexits;
 
-use crate::sysexits::{exit, Sysexits};
-use blobary::{
-    BlobHash, BlobHasher, BlobIterator, BlobStore, BlobStoreExt, PersistentBlobStore,
-    DEFAULT_MIME_TYPE,
+use crate::{
+    input::{list_inputs, open_inputs},
+    output::open_output,
+    store::open_store,
+    sysexits::{exit, Sysexits},
 };
+use blobary::{BlobHash, BlobHasher, BlobIterator, BlobStore, BlobStoreExt, DEFAULT_MIME_TYPE};
 use clap::{Parser, Subcommand};
 use dotenvy::dotenv;
 use shadow_rs::shadow;
 use std::{
-    fs::File,
-    io::{stdin, stdout, Read, Write},
+    io::stdout,
     ops::DerefMut,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
@@ -130,16 +134,6 @@ pub fn main() {
     exit(result.err().unwrap_or_default());
 }
 
-fn _open() -> Result<PersistentBlobStore, Sysexits> {
-    match PersistentBlobStore::open_cwd() {
-        Ok(store) => Ok(store),
-        Err(err) => {
-            eprintln!("{}: {}", "blobary", err);
-            Err(Sysexits::EX_IOERR)
-        }
-    }
-}
-
 fn version() -> Result<(), Sysexits> {
     let (date, _) = build::BUILD_TIME_3339.split_once('T').unwrap();
     let version_string = format!("{} ({} {})", build::PKG_VERSION, date, build::SHORT_COMMIT,);
@@ -159,17 +153,14 @@ impl Commands {
     }
 
     fn hash(input_paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
-        if input_paths.is_empty() {
-            return Err(Sysexits::EX_USAGE); // TODO: stdin
-        } else {
-            for input_path in input_paths {
-                let mut hasher = BlobHasher::new();
-                if let Err(_err) = hasher.update_mmap(input_path) {
-                    return Err(Sysexits::EX_IOERR);
-                }
-                let hash = hasher.finalize();
-                println!("{}", hash.to_hex());
+        let input_paths = list_inputs(input_paths)?;
+        for input_path in input_paths {
+            let mut hasher = BlobHasher::new();
+            if let Err(_err) = hasher.update_mmap(input_path) {
+                return Err(Sysexits::EX_IOERR);
             }
+            let hash = hasher.finalize();
+            println!("{}", hash.to_hex());
         }
         Ok(())
     }
@@ -179,17 +170,17 @@ impl Commands {
     }
 
     fn check(_options: &Options) -> Result<(), Sysexits> {
-        let _store = _open()?;
+        let _store = open_store()?;
         Ok(()) // TODO
     }
 
     fn compact(_options: &Options) -> Result<(), Sysexits> {
-        let _store = _open()?;
+        let _store = open_store()?;
         Ok(()) // TODO
     }
 
     fn list(options: &Options) -> Result<(), Sysexits> {
-        let mut store = _open()?;
+        let mut store = open_store()?;
         for blob in BlobIterator::new(&mut store) {
             let mut blob = blob.borrow_mut();
             let blob_hash = blob.hash()?;
@@ -206,25 +197,22 @@ impl Commands {
     }
 
     fn add(input_paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
-        if input_paths.is_empty() {
-            return Err(Sysexits::EX_USAGE); // TODO: stdin
-        } else {
-            for input_path in input_paths {
-                let mut store = _open()?;
-                let result = store.put_file(input_path);
-                if let Err(_err) = result {
-                    return Err(Sysexits::EX_IOERR);
-                }
-                let blob_id = result.unwrap();
-                let blob_hash = store.id_to_hash(blob_id).unwrap();
-                println!("{}", blob_hash.to_hex());
+        let mut store = open_store()?;
+        let input_paths = list_inputs(input_paths)?;
+        for input_path in input_paths {
+            let result = store.put_file(input_path);
+            if let Err(_err) = result {
+                return Err(Sysexits::EX_IOERR);
             }
+            let blob_id = result.unwrap();
+            let blob_hash = store.id_to_hash(blob_id).unwrap();
+            println!("{}", blob_hash.to_hex());
         }
         Ok(())
     }
 
     fn put(input_text: &String, _options: &Options) -> Result<(), Sysexits> {
-        let mut store = _open()?;
+        let mut store = open_store()?;
         let result = store.put_string(input_text);
         if let Err(_err) = result {
             return Err(Sysexits::EX_IOERR);
@@ -235,10 +223,10 @@ impl Commands {
         Ok(())
     }
 
-    fn get(ids: &Vec<String>, _options: &Options) -> Result<(), Sysexits> {
-        let store = _open()?;
-        for id in ids {
-            let id = BlobHash::from_hex(id).expect("parse hash");
+    fn get(blob_ids: &Vec<String>, _options: &Options) -> Result<(), Sysexits> {
+        let store = open_store()?;
+        for blob_id in blob_ids {
+            let id = BlobHash::from_hex(blob_id).expect("parse hash");
             match store.get_by_hash(id) {
                 None => return Err(Sysexits::EX_NOINPUT),
                 Some(blob) => {
@@ -251,45 +239,33 @@ impl Commands {
         Ok(())
     }
 
-    fn remove(ids: &Vec<String>, _options: &Options) -> Result<(), Sysexits> {
-        let _store = _open()?;
-        for _id in ids {
+    fn remove(blob_ids: &Vec<String>, _options: &Options) -> Result<(), Sysexits> {
+        let _store = open_store()?;
+        for _blob_id in blob_ids {
             // TODO
         }
         Ok(())
     }
 
-    fn pull(_url: &String, _options: &Options) -> Result<(), Sysexits> {
-        let _store = _open()?;
+    fn pull(_remote_url: &String, _options: &Options) -> Result<(), Sysexits> {
+        let _store = open_store()?;
         Ok(()) // TODO
     }
 
-    fn push(_url: &String, _options: &Options) -> Result<(), Sysexits> {
-        let _store = _open()?;
+    fn push(_remote_url: &String, _options: &Options) -> Result<(), Sysexits> {
+        let _store = open_store()?;
         Ok(()) // TODO
     }
 
-    fn sync(_url: &String, _options: &Options) -> Result<(), Sysexits> {
-        let _store = _open()?;
+    fn sync(_remote_url: &String, _options: &Options) -> Result<(), Sysexits> {
+        let _store = open_store()?;
         Ok(()) // TODO
     }
 
     fn import(input_paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
-        let mut store = _open()?;
-
-        let inputs: Vec<(Box<dyn Read>, String)> = if input_paths.is_empty() {
-            vec![(Box::new(stdin()), String::from("/dev/stdin"))]
-        } else {
-            let mut inputs = Vec::with_capacity(input_paths.len());
-            for input_path in input_paths {
-                let input: Box<dyn Read> = Box::new(File::open(input_path)?);
-                let input_path = String::from(input_path.as_ref().to_string_lossy());
-                inputs.push((input, input_path));
-            }
-            inputs
-        };
-
-        for (input, input_path) in inputs {
+        let mut store = open_store()?;
+        let inputs = open_inputs(input_paths)?;
+        for (input_path, input) in inputs {
             let mut tarball = tar::Archive::new(input);
             for file in tarball.entries()? {
                 let mut file = file?;
@@ -309,17 +285,12 @@ impl Commands {
                 }
             }
         }
-
         Ok(())
     }
 
     fn export(output_path: &Option<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
-        let mut store = _open()?;
-        let output: Box<dyn Write> = if output_path.is_none() {
-            Box::new(stdout())
-        } else {
-            Box::new(File::create(output_path.as_ref().unwrap()).unwrap())
-        };
+        let mut store = open_store()?;
+        let output = open_output(output_path)?;
         let blob_mtime: u64 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
