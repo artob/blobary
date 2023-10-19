@@ -13,7 +13,7 @@ use dotenvy::dotenv;
 use shadow_rs::shadow;
 use std::{
     fs::File,
-    io::{stdout, Write},
+    io::{stdin, stdout, Read, Write},
     ops::DerefMut,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
@@ -158,13 +158,13 @@ impl Commands {
         Ok(()) // TODO
     }
 
-    fn hash(paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
-        if paths.is_empty() {
+    fn hash(input_paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
+        if input_paths.is_empty() {
             return Err(Sysexits::EX_USAGE); // TODO: stdin
         } else {
-            for path in paths {
+            for input_path in input_paths {
                 let mut hasher = BlobHasher::new();
-                if let Err(_err) = hasher.update_mmap(path) {
+                if let Err(_err) = hasher.update_mmap(input_path) {
                     return Err(Sysexits::EX_IOERR);
                 }
                 let hash = hasher.finalize();
@@ -205,13 +205,13 @@ impl Commands {
         Ok(())
     }
 
-    fn add(paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
-        if paths.is_empty() {
+    fn add(input_paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
+        if input_paths.is_empty() {
             return Err(Sysexits::EX_USAGE); // TODO: stdin
         } else {
-            for path in paths {
+            for input_path in input_paths {
                 let mut store = _open()?;
-                let result = store.put_file(path);
+                let result = store.put_file(input_path);
                 if let Err(_err) = result {
                     return Err(Sysexits::EX_IOERR);
                 }
@@ -223,9 +223,9 @@ impl Commands {
         Ok(())
     }
 
-    fn put(text: &String, _options: &Options) -> Result<(), Sysexits> {
+    fn put(input_text: &String, _options: &Options) -> Result<(), Sysexits> {
         let mut store = _open()?;
-        let result = store.put_string(text);
+        let result = store.put_string(input_text);
         if let Err(_err) = result {
             return Err(Sysexits::EX_IOERR);
         }
@@ -274,24 +274,51 @@ impl Commands {
         Ok(()) // TODO
     }
 
-    fn import(paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
-        let _store = _open()?;
-        if paths.is_empty() {
-            return Err(Sysexits::EX_USAGE); // TODO: stdin
+    fn import(input_paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
+        let mut store = _open()?;
+
+        let inputs: Vec<(Box<dyn Read>, String)> = if input_paths.is_empty() {
+            vec![(Box::new(stdin()), String::from("/dev/stdin"))]
         } else {
-            for _path in paths {
-                // TODO
+            let mut inputs = Vec::with_capacity(input_paths.len());
+            for input_path in input_paths {
+                let input: Box<dyn Read> = Box::new(File::open(input_path)?);
+                let input_path = String::from(input_path.as_ref().to_string_lossy());
+                inputs.push((input, input_path));
+            }
+            inputs
+        };
+
+        for (input, input_path) in inputs {
+            let mut tarball = tar::Archive::new(input);
+            for file in tarball.entries()? {
+                let mut file = file?;
+                //let file_size = file.header().size()?;
+                let file_path = file.path_bytes();
+
+                match BlobHash::from_hex(file_path) {
+                    Ok(file_hash) => {
+                        let blob_id = store.put(&mut file)?;
+                        let blob_hash = store.id_to_hash(blob_id).unwrap();
+                        if file_hash != blob_hash {
+                            eprintln!("{}: hash mismatch in tarball", input_path);
+                            return Err(Sysexits::EX_DATAERR);
+                        }
+                    }
+                    Err(_err) => (),
+                }
             }
         }
+
         Ok(())
     }
 
-    fn export(path: &Option<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
+    fn export(output_path: &Option<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
         let mut store = _open()?;
-        let file: Box<dyn Write> = if path.is_none() {
+        let output: Box<dyn Write> = if output_path.is_none() {
             Box::new(stdout())
         } else {
-            Box::new(File::create(path.as_ref().unwrap()).unwrap())
+            Box::new(File::create(output_path.as_ref().unwrap()).unwrap())
         };
         let blob_mtime: u64 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -299,7 +326,7 @@ impl Commands {
             .as_secs()
             .try_into()
             .unwrap();
-        let mut tarball = tar::Builder::new(file);
+        let mut tarball = tar::Builder::new(output);
         for blob in BlobIterator::new(&mut store) {
             let mut blob = blob.borrow_mut();
             let blob_size = blob.size()?;
