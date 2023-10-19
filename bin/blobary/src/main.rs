@@ -8,7 +8,7 @@ mod store;
 mod sysexits;
 
 use crate::{
-    hash::{decode_hash, encode_hash},
+    hash::{encode_hash, parse_hash},
     input::{list_inputs, open_inputs},
     output::open_output,
     store::open_store,
@@ -25,6 +25,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 use tar::{EntryType, Header};
+use url::Url;
 
 shadow!(build);
 
@@ -75,19 +76,34 @@ enum Commands {
     Put { text: String },
     /// Fetch a blob by its hash
     #[clap(alias = "cat")]
-    Get { ids: Vec<String> },
+    Get {
+        #[arg(value_parser = parse_hash)]
+        ids: Vec<BlobHash>,
+    },
     /// Remove a blob by its hash
     #[clap(aliases = &["rm", "del", "delete"])]
-    Remove { ids: Vec<String> },
+    Remove {
+        #[arg(value_parser = parse_hash)]
+        ids: Vec<BlobHash>,
+    },
     /// Pull blobs from another repository
-    Pull { url: String },
+    Pull {
+        #[arg(value_parser = Url::parse)]
+        url: Url,
+    },
     /// Push blobs to another repository
-    Push { url: String },
+    Push {
+        #[arg(value_parser = Url::parse)]
+        url: Url,
+    },
     /// Sync blobs with another repository
-    Sync { url: String },
-    /// TODO
+    Sync {
+        #[arg(value_parser = Url::parse)]
+        url: Url,
+    },
+    /// Import blobs from a tarball
     Import { paths: Vec<PathBuf> },
-    /// TODO
+    /// Export blobs to a tarball
     Export { path: Option<PathBuf> },
 }
 
@@ -225,11 +241,10 @@ impl Commands {
         Ok(())
     }
 
-    fn get(blob_hashes: &Vec<String>, _options: &Options) -> Result<(), Sysexits> {
+    fn get(blob_hashes: &Vec<BlobHash>, _options: &Options) -> Result<(), Sysexits> {
         let store = open_store()?;
         for blob_hash in blob_hashes {
-            let blob_hash = decode_hash(blob_hash).expect("decode hash");
-            match store.get_by_hash(blob_hash) {
+            match store.get_by_hash(*blob_hash) {
                 None => return Err(Sysexits::EX_NOINPUT),
                 Some(blob) => {
                     let mut blob = blob.borrow_mut();
@@ -241,26 +256,25 @@ impl Commands {
         Ok(())
     }
 
-    fn remove(blob_hashes: &Vec<String>, _options: &Options) -> Result<(), Sysexits> {
+    fn remove(blob_hashes: &Vec<BlobHash>, _options: &Options) -> Result<(), Sysexits> {
         let _store = open_store()?;
-        for blob_hash in blob_hashes {
-            let _blob_hash = decode_hash(blob_hash).expect("decode hash");
+        for _blob_hash in blob_hashes {
             // TODO
         }
         Ok(())
     }
 
-    fn pull(_remote_url: &String, _options: &Options) -> Result<(), Sysexits> {
+    fn pull(_remote_url: &Url, _options: &Options) -> Result<(), Sysexits> {
         let _store = open_store()?;
         Ok(()) // TODO
     }
 
-    fn push(_remote_url: &String, _options: &Options) -> Result<(), Sysexits> {
+    fn push(_remote_url: &Url, _options: &Options) -> Result<(), Sysexits> {
         let _store = open_store()?;
         Ok(()) // TODO
     }
 
-    fn sync(_remote_url: &String, _options: &Options) -> Result<(), Sysexits> {
+    fn sync(_remote_url: &Url, _options: &Options) -> Result<(), Sysexits> {
         let _store = open_store()?;
         Ok(()) // TODO
     }
