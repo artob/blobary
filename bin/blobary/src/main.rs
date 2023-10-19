@@ -4,7 +4,10 @@ mod config;
 mod sysexits;
 
 use crate::sysexits::{exit, Sysexits};
-use blobary::{BlobHash, BlobHasher, BlobIterator, BlobStore, BlobStoreExt, PersistentBlobStore};
+use blobary::{
+    BlobHash, BlobHasher, BlobIterator, BlobStore, BlobStoreExt, PersistentBlobStore,
+    DEFAULT_MIME_TYPE,
+};
 use clap::{Parser, Subcommand};
 use dotenvy::dotenv;
 use shadow_rs::shadow;
@@ -189,12 +192,10 @@ impl Commands {
             let mut blob = blob.borrow_mut();
             let blob_hash = blob.hash()?;
             let blob_hash = blob_hash.to_hex();
-            if options.debug {
+            if options.verbose || options.debug {
                 let blob_size = blob.size()?;
-                println!("{} {}", blob_hash, blob_size); // TODO
-            } else if options.verbose {
-                let blob_size = blob.size()?;
-                println!("{} {}", blob_hash, blob_size);
+                let blob_type = blob.mime_type()?.unwrap_or(DEFAULT_MIME_TYPE);
+                println!("{}\t{}\t{}", blob_hash, blob_size, blob_type);
             } else {
                 println!("{}", blob_hash);
             }
