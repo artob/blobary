@@ -15,11 +15,14 @@ categories.workspace = true
 publish.workspace = true
 
 [features]
-default = ["tar"]
+default = ["base58", "tar"]
+base58 = ["dep:bs58"]
 tar = ["dep:tar"]
 
 [dependencies]
+#arrayvec = { version = "0.7.4", features = ["zeroize"] }
 argfile = "0.1.6"
+bs58 = { version = "0.5.0", optional = true }
 blobary.workspace = true
 clap = { version = "4.4.6", features = ["color", "derive", "unicode"] }
 dirs = "5.0.1"

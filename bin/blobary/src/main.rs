@@ -1,12 +1,14 @@
 // This is free and unencumbered software released into the public domain.
 
 mod config;
+mod hash;
 mod input;
 mod output;
 mod store;
 mod sysexits;
 
 use crate::{
+    hash::{decode_hash, encode_hash},
     input::{list_inputs, open_inputs},
     output::open_output,
     store::open_store,
@@ -32,7 +34,7 @@ shadow!(build);
 #[command(arg_required_else_help = true)]
 struct Options {
     /// Enable debugging output
-    #[clap(short = 'd', long, value_parser)]
+    #[clap(short = 'd', long, value_parser, global = true)]
     debug: bool,
 
     /// Show license information
@@ -40,7 +42,7 @@ struct Options {
     license: bool,
 
     // Enable verbose output
-    #[clap(short = 'v', long, value_parser)]
+    #[clap(short = 'v', long, value_parser, global = true)]
     verbose: bool,
 
     /// Print version information
@@ -160,7 +162,7 @@ impl Commands {
                 return Err(Sysexits::EX_IOERR);
             }
             let hash = hasher.finalize();
-            println!("{}", hash.to_hex());
+            println!("{}", encode_hash(hash));
         }
         Ok(())
     }
@@ -184,7 +186,7 @@ impl Commands {
         for blob in BlobIterator::new(&mut store) {
             let mut blob = blob.borrow_mut();
             let blob_hash = blob.hash()?;
-            let blob_hash = blob_hash.to_hex();
+            let blob_hash = encode_hash(blob_hash);
             if options.verbose || options.debug {
                 let blob_size = blob.size()?;
                 let blob_type = blob.mime_type()?.unwrap_or(DEFAULT_MIME_TYPE);
@@ -206,7 +208,7 @@ impl Commands {
             }
             let blob_id = result.unwrap();
             let blob_hash = store.id_to_hash(blob_id).unwrap();
-            println!("{}", blob_hash.to_hex());
+            println!("{}", encode_hash(blob_hash));
         }
         Ok(())
     }
@@ -219,15 +221,15 @@ impl Commands {
         }
         let blob_id = result.unwrap();
         let blob_hash = store.id_to_hash(blob_id).unwrap();
-        println!("{}", blob_hash.to_hex());
+        println!("{}", encode_hash(blob_hash));
         Ok(())
     }
 
-    fn get(blob_ids: &Vec<String>, _options: &Options) -> Result<(), Sysexits> {
+    fn get(blob_hashes: &Vec<String>, _options: &Options) -> Result<(), Sysexits> {
         let store = open_store()?;
-        for blob_id in blob_ids {
-            let id = BlobHash::from_hex(blob_id).expect("parse hash");
-            match store.get_by_hash(id) {
+        for blob_hash in blob_hashes {
+            let blob_hash = decode_hash(blob_hash).expect("decode hash");
+            match store.get_by_hash(blob_hash) {
                 None => return Err(Sysexits::EX_NOINPUT),
                 Some(blob) => {
                     let mut blob = blob.borrow_mut();
@@ -239,9 +241,10 @@ impl Commands {
         Ok(())
     }
 
-    fn remove(blob_ids: &Vec<String>, _options: &Options) -> Result<(), Sysexits> {
+    fn remove(blob_hashes: &Vec<String>, _options: &Options) -> Result<(), Sysexits> {
         let _store = open_store()?;
-        for _blob_id in blob_ids {
+        for blob_hash in blob_hashes {
+            let _blob_hash = decode_hash(blob_hash).expect("decode hash");
             // TODO
         }
         Ok(())
@@ -271,7 +274,7 @@ impl Commands {
                 let mut file = file?;
                 //let file_size = file.header().size()?;
                 let file_path = file.path_bytes();
-
+                // only base-16 supported here
                 match BlobHash::from_hex(file_path) {
                     Ok(file_hash) => {
                         let blob_id = store.put(&mut file)?;
@@ -304,7 +307,7 @@ impl Commands {
             let blob_hash = blob.hash()?;
             let mut file_head = Header::new_ustar();
             file_head.set_entry_type(EntryType::Regular);
-            file_head.set_path(blob_hash.to_hex().as_str())?;
+            file_head.set_path(blob_hash.to_hex().as_str())?; // only base-16 supported here
             file_head.set_size(blob_size);
             file_head.set_mtime(blob_mtime);
             file_head.set_mode(0o444);
