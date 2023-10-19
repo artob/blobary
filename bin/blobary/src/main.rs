@@ -12,10 +12,13 @@ use clap::{Parser, Subcommand};
 use dotenvy::dotenv;
 use shadow_rs::shadow;
 use std::{
-    io::stdout,
+    fs::File,
+    io::{stdout, Write},
     ops::DerefMut,
     path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
 };
+use tar::{EntryType, Header};
 
 shadow!(build);
 
@@ -187,8 +190,7 @@ impl Commands {
 
     fn list(options: &Options) -> Result<(), Sysexits> {
         let mut store = _open()?;
-        let blobs = BlobIterator::new(&mut store);
-        for blob in blobs {
+        for blob in BlobIterator::new(&mut store) {
             let mut blob = blob.borrow_mut();
             let blob_hash = blob.hash()?;
             let blob_hash = blob_hash.to_hex();
@@ -223,9 +225,13 @@ impl Commands {
 
     fn put(text: &String, _options: &Options) -> Result<(), Sysexits> {
         let mut store = _open()?;
-        if let Err(_err) = store.put_string(text) {
+        let result = store.put_string(text);
+        if let Err(_err) = result {
             return Err(Sysexits::EX_IOERR);
         }
+        let blob_id = result.unwrap();
+        let blob_hash = store.id_to_hash(blob_id).unwrap();
+        println!("{}", blob_hash.to_hex());
         Ok(())
     }
 
@@ -281,12 +287,36 @@ impl Commands {
     }
 
     fn export(path: &Option<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
-        let _store = _open()?;
-        if path.is_none() {
-            return Err(Sysexits::EX_USAGE); // TODO: stdin
+        let mut store = _open()?;
+        let file: Box<dyn Write> = if path.is_none() {
+            Box::new(stdout())
         } else {
-            // TODO
+            Box::new(File::create(path.as_ref().unwrap()).unwrap())
+        };
+        let blob_mtime: u64 = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            .try_into()
+            .unwrap();
+        let mut tarball = tar::Builder::new(file);
+        for blob in BlobIterator::new(&mut store) {
+            let mut blob = blob.borrow_mut();
+            let blob_size = blob.size()?;
+            let blob_hash = blob.hash()?;
+            let mut file_head = Header::new_ustar();
+            file_head.set_entry_type(EntryType::Regular);
+            file_head.set_path(blob_hash.to_hex().as_str())?;
+            file_head.set_size(blob_size);
+            file_head.set_mtime(blob_mtime);
+            file_head.set_mode(0o444);
+            file_head.set_username("root")?;
+            file_head.set_groupname("root")?;
+            file_head.set_cksum();
+            blob.seek(std::io::SeekFrom::Start(0))?;
+            tarball.append(&file_head, &mut blob.deref_mut())?;
         }
+        tarball.finish()?;
         Ok(())
     }
 }

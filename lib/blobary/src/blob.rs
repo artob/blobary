@@ -21,6 +21,8 @@ pub trait Blob: Seek + Read {
     }
 
     /// Guesses the MIME content type of the blob.
+    ///
+    /// Preserves the stream position prior to calling this method.
     fn mime_type(&mut self) -> Result<Option<&'static str>> {
         let mut buffer = vec![0u8; 0];
         let pos = self.stream_position()?;
@@ -33,9 +35,16 @@ pub trait Blob: Seek + Read {
     }
 
     /// Returns the blob's hash.
+    ///
+    /// Preserves the stream position prior to calling this method.
     fn hash(&mut self) -> Result<BlobHash> {
         let mut hasher = BlobHasher::new();
+        let pos = self.stream_position()?;
+        if pos != 0 {
+            self.seek(std::io::SeekFrom::Start(0))?;
+        }
         std::io::copy(self, &mut hasher)?;
+        self.seek(std::io::SeekFrom::Start(pos))?;
         let hash = hasher.finalize();
         Ok(hash)
     }
