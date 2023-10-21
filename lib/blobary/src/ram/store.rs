@@ -8,12 +8,10 @@ use std::{
     rc::Rc,
 };
 
-pub(crate) struct EphemeralBlobRecord(BlobHash, Rc<RefCell<dyn Blob>>);
-
 #[derive(Default)]
 pub struct EphemeralBlobStore {
     index: HashMap<BlobHash, BlobID>,
-    store: Vec<EphemeralBlobRecord>,
+    store: Vec<Blob>,
 }
 
 impl BlobStore for EphemeralBlobStore {
@@ -26,42 +24,52 @@ impl BlobStore for EphemeralBlobStore {
     }
 
     fn id_to_hash(&self, blob_id: BlobID) -> Option<BlobHash> {
-        self.store.get(blob_id).map(|blob_record| blob_record.0)
+        match blob_id {
+            0 => None,
+            _ => self.store.get(blob_id - 1).map(|blob| blob.hash),
+        }
     }
 
-    fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Rc<RefCell<dyn Blob>>> {
+    fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Blob> {
         match self.index.get(&blob_hash) {
             None => None,
             Some(blob_id) => self.get_by_id(*blob_id),
         }
     }
 
-    fn get_by_id(&self, blob_id: BlobID) -> Option<Rc<RefCell<dyn Blob>>> {
+    fn get_by_id(&self, blob_id: BlobID) -> Option<Blob> {
         match blob_id {
             0 => None,
-            _ => self
-                .store
-                .get(blob_id - 1)
-                .map(|blob_record| Rc::clone(&blob_record.1)),
+            _ => self.store.get(blob_id - 1).map(|blob| blob.clone()),
         }
     }
 
-    fn put(&mut self, blob_data: &mut dyn Read) -> Result<BlobID> {
+    fn put(&mut self, blob_data: &mut dyn Read) -> Result<Blob> {
         let mut buffer = Vec::new();
         blob_data.read_to_end(&mut buffer)?;
+        let blob_size = buffer.len() as u64;
 
         let blob_hash = hash(&buffer);
         if let Some(blob_id) = self.index.get(&blob_hash) {
-            return Ok(*blob_id);
+            return match self.get_by_id(*blob_id) {
+                None => unreachable!("blob_id {} not found", blob_id),
+                Some(blob) => Ok(blob),
+            };
         }
 
-        let blob_record =
-            EphemeralBlobRecord(blob_hash, Rc::new(RefCell::new(Cursor::new(buffer))));
-
         let blob_id: BlobID = self.store.len() + 1;
-        self.store.push(blob_record);
+        let blob_data = Rc::new(RefCell::new(Cursor::new(buffer)));
+        let blob = Blob {
+            id: blob_id,
+            hash: blob_hash,
+            size: blob_size,
+            data: Some(blob_data),
+        };
+
+        self.store.push(blob.clone());
         self.index.insert(blob_hash, blob_id);
-        Ok(blob_id)
+
+        Ok(blob)
     }
 }
 
@@ -76,16 +84,16 @@ mod test {
         let mut store = EphemeralBlobStore::default();
         assert_eq!(store.size(), 0);
 
-        let foo_id = store.put_string("Foo").unwrap();
+        let foo = store.put_string("Foo").unwrap();
         assert_eq!(store.size(), 1);
-        assert_eq!(foo_id, 1);
+        assert_eq!(foo.id, 1);
 
-        let foo2_id = store.put_string("Foo").unwrap();
+        let foo2 = store.put_string("Foo").unwrap();
         assert_eq!(store.size(), 1);
-        assert_eq!(foo2_id, 1);
+        assert_eq!(foo2.id, 1);
 
-        let bar_id = store.put_string("Bar").unwrap();
+        let bar = store.put_string("Bar").unwrap();
         assert_eq!(store.size(), 2);
-        assert_eq!(bar_id, 2);
+        assert_eq!(bar.id, 2);
     }
 }

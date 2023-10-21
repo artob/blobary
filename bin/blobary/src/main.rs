@@ -200,13 +200,12 @@ impl Commands {
     fn list(options: &Options) -> Result<(), Sysexits> {
         let mut store = open_store()?;
         for blob in BlobIterator::new(&mut store) {
-            let mut blob = blob.borrow_mut();
-            let blob_hash = blob.hash()?;
-            let blob_hash = encode_hash(blob_hash);
+            let blob_data = blob.data.unwrap();
+            let mut blob_data = blob_data.borrow_mut();
+            let blob_hash = encode_hash(blob.hash);
             if options.verbose || options.debug {
-                let blob_size = blob.size()?;
-                let blob_type = blob.mime_type()?.unwrap_or(DEFAULT_MIME_TYPE);
-                println!("{}\t{}\t{}", blob_hash, blob_size, blob_type);
+                let blob_type = blob_data.mime_type()?.unwrap_or(DEFAULT_MIME_TYPE);
+                println!("{}\t{}\t{}", blob_hash, blob.size, blob_type);
             } else {
                 println!("{}", blob_hash);
             }
@@ -222,9 +221,8 @@ impl Commands {
             if let Err(_err) = result {
                 return Err(Sysexits::EX_IOERR);
             }
-            let blob_id = result.unwrap();
-            let blob_hash = store.id_to_hash(blob_id).unwrap();
-            println!("{}", encode_hash(blob_hash));
+            let blob = result.unwrap();
+            println!("{}", encode_hash(blob.hash));
         }
         Ok(())
     }
@@ -235,9 +233,8 @@ impl Commands {
         if let Err(_err) = result {
             return Err(Sysexits::EX_IOERR);
         }
-        let blob_id = result.unwrap();
-        let blob_hash = store.id_to_hash(blob_id).unwrap();
-        println!("{}", encode_hash(blob_hash));
+        let blob = result.unwrap();
+        println!("{}", encode_hash(blob.hash));
         Ok(())
     }
 
@@ -247,9 +244,10 @@ impl Commands {
             match store.get_by_hash(*blob_hash) {
                 None => return Err(Sysexits::EX_NOINPUT),
                 Some(blob) => {
-                    let mut blob = blob.borrow_mut();
+                    let blob_data = blob.data.unwrap();
+                    let mut blob_data = blob_data.borrow_mut();
                     let mut stdout = stdout().lock();
-                    std::io::copy(blob.deref_mut(), &mut stdout).unwrap();
+                    std::io::copy(blob_data.deref_mut(), &mut stdout).unwrap();
                 }
             }
         }
@@ -291,9 +289,8 @@ impl Commands {
                 // only base-16 supported here
                 match BlobHash::from_hex(file_path) {
                     Ok(file_hash) => {
-                        let blob_id = store.put(&mut file)?;
-                        let blob_hash = store.id_to_hash(blob_id).unwrap();
-                        if file_hash != blob_hash {
+                        let blob = store.put(&mut file)?;
+                        if file_hash != blob.hash {
                             eprintln!("{}: hash mismatch in tarball", input_path);
                             return Err(Sysexits::EX_DATAERR);
                         }
@@ -316,20 +313,19 @@ impl Commands {
             .unwrap();
         let mut tarball = tar::Builder::new(output);
         for blob in BlobIterator::new(&mut store) {
-            let mut blob = blob.borrow_mut();
-            let blob_size = blob.size()?;
-            let blob_hash = blob.hash()?;
+            let blob_data = blob.data.unwrap();
+            let mut blob_data = blob_data.borrow_mut();
             let mut file_head = Header::new_ustar();
             file_head.set_entry_type(EntryType::Regular);
-            file_head.set_path(blob_hash.to_hex().as_str())?; // only base-16 supported here
-            file_head.set_size(blob_size);
+            file_head.set_path(blob.hash.to_hex().as_str())?; // only base-16 supported here
+            file_head.set_size(blob.size);
             file_head.set_mtime(blob_mtime);
             file_head.set_mode(0o444);
             file_head.set_username("root")?;
             file_head.set_groupname("root")?;
             file_head.set_cksum();
-            blob.seek(std::io::SeekFrom::Start(0))?;
-            tarball.append(&file_head, &mut blob.deref_mut())?;
+            blob_data.seek(std::io::SeekFrom::Start(0))?;
+            tarball.append(&file_head, &mut blob_data.deref_mut())?;
         }
         tarball.finish()?;
         Ok(())

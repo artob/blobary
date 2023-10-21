@@ -100,20 +100,27 @@ impl BlobStore for PersistentBlobStore {
         Some(blob_record.0.into())
     }
 
-    fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Rc<RefCell<dyn Blob>>> {
-        if !self.lookup_id.contains_key(&blob_hash) {
-            return None;
+    fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Blob> {
+        match self.lookup_id.get(&blob_hash) {
+            None => None,
+            Some(blob_id) => {
+                let blob_filename = blob_hash.to_hex(); // TODO: refactor
+                let mut blob_file = self.dir.open(blob_filename.as_str()).ok()?;
+                Some(Blob {
+                    id: *blob_id,
+                    hash: blob_hash,
+                    size: blob_file.stream_len().ok()?,
+                    data: Some(Rc::new(RefCell::new(blob_file))),
+                })
+            }
         }
-        let blob_filename = blob_hash.to_hex();
-        let blob_file = self.dir.open(blob_filename.as_str()).ok()?;
-        Some(Rc::new(RefCell::new(blob_file)))
     }
 
-    fn get_by_id(&self, blob_id: BlobID) -> Option<Rc<RefCell<dyn Blob>>> {
+    fn get_by_id(&self, blob_id: BlobID) -> Option<Blob> {
         self.get_by_hash(self.id_to_hash(blob_id)?)
     }
 
-    fn put(&mut self, blob_data: &mut dyn Read) -> Result<BlobID> {
+    fn put(&mut self, blob_data: &mut dyn Read) -> Result<Blob> {
         // Buffer the blob data in a temporary file:
         let mut temp_file = TempFile::new(&self.dir)?;
         let blob_size = std::io::copy(blob_data, &mut temp_file)?;
@@ -126,7 +133,12 @@ impl BlobStore for PersistentBlobStore {
         // Check if the blob is already in the store:
         let blob_hash = blob_hasher.finalize();
         if let Some(blob_id) = self.lookup_id.get(&blob_hash) {
-            return Ok(*blob_id);
+            return Ok(Blob {
+                id: *blob_id,
+                hash: blob_hash,
+                size: blob_size,
+                data: None,
+            });
         }
 
         // Rename the temporary file to its final name:
@@ -145,7 +157,12 @@ impl BlobStore for PersistentBlobStore {
         index_file.sync_all()?;
         self.lookup_id.insert(blob_hash, blob_id);
 
-        Ok(blob_id)
+        Ok(Blob {
+            id: blob_id,
+            hash: blob_hash,
+            size: blob_size,
+            data: None,
+        })
     }
 }
 
@@ -161,17 +178,17 @@ mod test {
         let mut store = PersistentBlobStore::open_tempdir(&temp_dir).unwrap();
         assert_eq!(store.size(), 0);
 
-        let foo_id = store.put_string("Foo").unwrap();
+        let foo = store.put_string("Foo").unwrap();
         assert_eq!(store.size(), 1);
-        assert_eq!(foo_id, 1);
+        assert_eq!(foo.id, 1);
 
-        let foo2_id = store.put_string("Foo").unwrap();
+        let foo2 = store.put_string("Foo").unwrap();
         assert_eq!(store.size(), 1);
-        assert_eq!(foo2_id, 1);
+        assert_eq!(foo2.id, 1);
 
-        let bar_id = store.put_string("Bar").unwrap();
+        let bar = store.put_string("Bar").unwrap();
         assert_eq!(store.size(), 2);
-        assert_eq!(bar_id, 2);
+        assert_eq!(bar.id, 2);
 
         // eprintln!("{}", std::env::temp_dir().to_str().unwrap());
         // std::process::exit(0); // leave `temp_dir`` around for inspection

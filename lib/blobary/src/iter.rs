@@ -1,7 +1,7 @@
 // This is proprietary and confidential source code not for distribution.
 
 use crate::{Blob, BlobStore};
-use std::{cell::RefCell, iter::Iterator, rc::Rc};
+use std::iter::Iterator;
 
 pub struct BlobIterator<'a> {
     pub(crate) store: &'a mut dyn BlobStore,
@@ -21,7 +21,7 @@ impl<'a> BlobIterator<'a> {
 }
 
 impl<'a> Iterator for BlobIterator<'a> {
-    type Item = Rc<RefCell<(dyn Blob + 'static)>>;
+    type Item = Blob;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.index += 1;
