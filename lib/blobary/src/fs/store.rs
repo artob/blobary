@@ -1,8 +1,8 @@
 // This is free and unencumbered software released into the public domain.
 
 use crate::{
-    Blob, BlobHash, BlobHasher, BlobID, BlobStore, BlobStoreExt, File, PersistentBlobRecord,
-    Result, RECORD_SIZE,
+    encode_into_path, Blob, BlobHash, BlobHasher, BlobID, BlobStore, BlobStoreExt, File,
+    PersistentBlobRecord, Result, RECORD_SIZE,
 };
 use cap_std::{
     ambient_authority,
@@ -104,8 +104,8 @@ impl BlobStore for PersistentBlobStore {
         match self.lookup_id.get(&blob_hash) {
             None => None,
             Some(blob_id) => {
-                let blob_filename = blob_hash.to_hex(); // TODO: refactor
-                let mut blob_file = self.dir.open(blob_filename.as_str()).ok()?;
+                let blob_path = encode_into_path(blob_hash);
+                let mut blob_file = self.dir.open(blob_path).ok()?;
                 Some(Blob {
                     id: *blob_id,
                     hash: blob_hash,
@@ -142,10 +142,11 @@ impl BlobStore for PersistentBlobStore {
         }
 
         // Rename the temporary file to its final name:
+        let blob_path = encode_into_path(blob_hash);
         temp_file.as_file().set_permissions(Permissions::from_std(
             std::fs::Permissions::from_mode(0o444),
         ))?;
-        temp_file.replace(blob_hash.to_hex().as_str())?;
+        temp_file.replace(blob_path)?;
 
         let blob_id: BlobID = self.lookup_id.len() + 1;
         let blob_record = PersistentBlobRecord(blob_hash.into(), blob_size.into());
@@ -163,6 +164,20 @@ impl BlobStore for PersistentBlobStore {
             size: blob_size,
             data: None,
         })
+    }
+
+    fn remove(&mut self, blob_hash: BlobHash) -> Result<bool> {
+        match self.lookup_id.remove(&blob_hash) {
+            None => Ok(false), // not found
+            Some(_blob_id) => {
+                let blob_path = encode_into_path(blob_hash);
+                match self.dir.remove_file(blob_path) {
+                    Ok(_) => Ok(true),
+                    Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(false),
+                    Err(err) => Err(err),
+                }
+            }
+        }
     }
 }
 

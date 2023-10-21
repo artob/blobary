@@ -71,6 +71,17 @@ impl BlobStore for EphemeralBlobStore {
 
         Ok(blob)
     }
+
+    fn remove(&mut self, blob_hash: BlobHash) -> Result<bool> {
+        match self.hash_to_id(blob_hash) {
+            None => Ok(false), // not found
+            Some(blob_id) => {
+                self.index.remove(&blob_hash);
+                self.store.remove(blob_id);
+                return Ok(true);
+            }
+        }
+    }
 }
 
 impl BlobStoreExt for EphemeralBlobStore {}

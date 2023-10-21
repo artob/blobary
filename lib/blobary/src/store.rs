@@ -23,6 +23,9 @@ pub trait BlobStore {
 
     /// Stores a blob and returns its store ID.
     fn put(&mut self, blob_data: &mut dyn Read) -> Result<Blob>;
+
+    /// Removes a blob by its BLAKE3 hash.
+    fn remove(&mut self, blob_hash: BlobHash) -> Result<bool>;
 }
 
 pub trait BlobStoreExt: BlobStore {

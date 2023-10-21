@@ -255,9 +255,9 @@ impl Commands {
     }
 
     fn remove(blob_hashes: &Vec<BlobHash>, _options: &Options) -> Result<(), Sysexits> {
-        let _store = open_store()?;
-        for _blob_hash in blob_hashes {
-            // TODO
+        let mut store = open_store()?;
+        for blob_hash in blob_hashes {
+            store.remove(*blob_hash)?;
         }
         Ok(())
     }
