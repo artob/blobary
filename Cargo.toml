@@ -20,4 +20,9 @@ categories = ["data-structures", "database-implementations", "filesystem"]
 publish = true
 
 [workspace.dependencies]
+cap-std = "2.0.0"
+cap-tempfile = "2.0.0"
 blobary = { path = "lib/blobary" }
+rayon = "1.8.0"
+zerocopy = "0.7.11"
+zerocopy-derive = "0.7.11"

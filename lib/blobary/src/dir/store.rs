@@ -21,13 +21,13 @@ use zerocopy::{AsBytes, FromBytes};
 
 const INDEX_FILE_NAME: &str = ".blobary.index";
 
-pub struct PersistentBlobStore {
+pub struct DirectoryBlobStore {
     pub(crate) dir: Dir,
     pub(crate) index_file: RefCell<Box<dyn File>>, // .blobary.index
     pub(crate) lookup_id: HashMap<BlobHash, BlobID>,
 }
 
-impl PersistentBlobStore {
+impl DirectoryBlobStore {
     pub fn open_cwd() -> Result<Self> {
         Self::open_path(".")
     }
@@ -85,7 +85,7 @@ impl PersistentBlobStore {
     }
 }
 
-impl BlobStore for PersistentBlobStore {
+impl BlobStore for DirectoryBlobStore {
     fn size(&self) -> BlobID {
         // TODO: remove the dependence on #![feature(seek_stream_len)]
         self.index_file.borrow_mut().stream_len().unwrap() as BlobID / RECORD_SIZE as BlobID
@@ -181,7 +181,7 @@ impl BlobStore for PersistentBlobStore {
     }
 }
 
-impl BlobStoreExt for PersistentBlobStore {}
+impl BlobStoreExt for DirectoryBlobStore {}
 
 #[cfg(test)]
 mod test {
@@ -190,7 +190,7 @@ mod test {
     #[test]
     fn test() {
         let temp_dir = cap_tempfile::tempdir(ambient_authority()).unwrap();
-        let mut store = PersistentBlobStore::open_tempdir(&temp_dir).unwrap();
+        let mut store = DirectoryBlobStore::open_tempdir(&temp_dir).unwrap();
         assert_eq!(store.size(), 0);
 
         let foo = store.put_string("Foo").unwrap();

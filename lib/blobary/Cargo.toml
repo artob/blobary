@@ -15,21 +15,26 @@ categories.workspace = true
 publish.workspace = true
 
 [features]
-default = ["gzip", "infer", "lz4", "tracing", "zeroize"]
+default = ["base58", "encrypt", "gzip", "lz4", "magic", "redis", "sqlite", "tracing", "zeroize"]
+base58 = ["dep:bs58"]
+encrypt = ["zeroize"]
 gzip = ["dep:libflate"]
-infer = ["dep:infer"]
 lz4 = ["dep:lz4_flex"]
+magic = ["dep:infer"] # TODO: file-format
+redis = []
+sqlite = []
 tracing = ["dep:tracing"]
 zeroize = ["dep:zeroize"]
 
 [dependencies]
 blake3 = { version = "1.5.0", features = ["mmap", "neon", "rayon", "zeroize"]}
-cap-std = "2.0.0"
-cap-tempfile = "2.0.0"
+bs58 = { version = "0.5.0", optional = true }
+cap-std.workspace = true
+cap-tempfile.workspace = true
 infer = { version = "0.15.0", optional = true, default-features = false }
 libflate = { version = "2.0.0", optional = true }
 lz4_flex = { version = "0.11.1", optional = true }
 tracing = { version = "0.1.39", optional = true }
-zerocopy = "0.7.11"
-zerocopy-derive = "0.7.11"
+zerocopy.workspace = true
+zerocopy-derive.workspace = true
 zeroize = { version = "1.6.0", optional = true }

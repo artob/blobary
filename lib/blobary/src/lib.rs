@@ -3,15 +3,25 @@
 #![feature(seek_stream_len)]
 
 mod blob;
-mod fs;
+mod dir;
+mod file;
+mod feature;
 mod hasher;
 mod iter;
-mod ram;
 mod store;
+mod temp;
 
 pub use blob::*;
-pub use fs::*;
+pub use dir::*;
+pub use file::*;
+pub use feature::*;
 pub use hasher::*;
 pub use iter::*;
-pub use ram::*;
 pub use store::*;
+pub use temp::*;
+
+#[cfg(feature = "redis")]
+mod redis;
+
+#[cfg(feature = "sqlite")]
+mod sqlite;

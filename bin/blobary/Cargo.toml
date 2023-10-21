@@ -16,8 +16,11 @@ publish.workspace = true
 
 [features]
 default = ["base58", "tar"]
+7z = ["dep:sevenz-rust"]
 base58 = ["dep:bs58"]
+dmg = [] # TODO: apple-dmg?
 tar = ["dep:tar"]
+zip = ["dep:zip"]
 
 [dependencies]
 #arrayvec = { version = "0.7.4", features = ["zeroize"] }
@@ -27,7 +30,8 @@ blobary.workspace = true
 clap = { version = "4.4.6", features = ["color", "derive", "unicode"] }
 dirs = "5.0.1"
 dotenvy = "0.15.7"
-rayon = "1.8.0"
+rayon.workspace = true
+sevenz-rust = { version = "0.5.3", optional = true }
 shadow-rs = "0.24.1"
 tar = { version = "0.4.40", optional = true }
 tokio = { version = "1.33.0", features = ["full"] }
@@ -35,6 +39,7 @@ tracing = "0.1.39"
 tracing-subscriber = "0.3.17"
 url = "2.4.1"
 wild = "2.2.0"
+zip = { version = "0.6.6", optional = true }
 
 [build-dependencies]
 shadow-rs = "0.24.1"

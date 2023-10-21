@@ -167,7 +167,25 @@ fn license() -> Result<(), Sysexits> {
 
 impl Commands {
     fn config(_options: &Options) -> Result<(), Sysexits> {
-        Ok(()) // TODO
+        print!("features: [");
+        let mut features = Vec::from_iter(blobary::FEATURES.iter());
+        #[cfg(feature = "7z")]
+        features.push(&"7z");
+        #[cfg(feature = "dmg")]
+        features.push(&"dmg");
+        #[cfg(feature = "tar")]
+        features.push(&"tar");
+        #[cfg(feature = "zip")]
+        features.push(&"zip");
+        features.sort();
+        for (index, &&feature) in features.iter().enumerate() {
+            if index > 0 {
+                print!(", ");
+            }
+            print!("{}", feature);
+        }
+        println!("]");
+        Ok(())
     }
 
     fn hash(input_paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
