@@ -327,9 +327,7 @@ impl Commands {
         let blob_mtime: u64 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs()
-            .try_into()
-            .unwrap();
+            .as_secs();
         let mut tarball = tar::Builder::new(output);
         for blob in BlobIterator::new(store.deref_mut()) {
             let blob_data = blob.data.unwrap();

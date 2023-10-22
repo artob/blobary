@@ -40,7 +40,7 @@ impl BlobStore for EphemeralBlobStore {
     fn get_by_id(&self, blob_id: BlobID) -> Option<Blob> {
         match blob_id {
             0 => None,
-            _ => self.store.get(blob_id - 1).map(|blob| blob.clone()),
+            _ => self.store.get(blob_id - 1).cloned(),
         }
     }
 
@@ -78,7 +78,7 @@ impl BlobStore for EphemeralBlobStore {
             Some(blob_id) => {
                 self.index.remove(&blob_hash);
                 self.store.remove(blob_id);
-                return Ok(true);
+                Ok(true)
             }
         }
     }
