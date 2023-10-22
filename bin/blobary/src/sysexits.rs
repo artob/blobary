@@ -25,6 +25,12 @@ pub enum Sysexits {
     EX_CONFIG = 78,
 }
 
+impl From<Box<dyn std::error::Error>> for Sysexits {
+    fn from(_err: Box<dyn std::error::Error>) -> Self {
+        Sysexits::EX_SOFTWARE
+    }
+}
+
 impl From<std::io::Error> for Sysexits {
     fn from(err: std::io::Error) -> Self {
         use std::io::ErrorKind::*;

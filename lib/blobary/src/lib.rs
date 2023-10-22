@@ -4,8 +4,8 @@
 
 mod blob;
 mod dir;
-mod file;
 mod feature;
+mod file;
 mod hasher;
 mod iter;
 mod store;
@@ -13,15 +13,15 @@ mod temp;
 
 pub use blob::*;
 pub use dir::*;
-pub use file::*;
 pub use feature::*;
+pub use file::*;
 pub use hasher::*;
 pub use iter::*;
 pub use store::*;
 pub use temp::*;
 
 #[cfg(feature = "redis")]
-mod redis;
+pub mod redis;
 
 #[cfg(feature = "sqlite")]
-mod sqlite;
+pub mod sqlite;

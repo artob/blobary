@@ -3,7 +3,7 @@
 use crate::{Blob, BlobHash, BlobID, BlobIterator};
 use std::{io::Read, path::Path};
 
-pub use std::io::Result;
+pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 pub trait BlobStore {
     /// Returns the number of blobs in this store.
@@ -39,6 +39,8 @@ pub trait BlobStoreExt: BlobStore {
         self.put(&mut std::fs::File::open(path)?)
     }
 }
+
+impl BlobStoreExt for dyn BlobStore {}
 
 impl<'a> IntoIterator for &'a mut dyn BlobStore {
     type Item = Blob;

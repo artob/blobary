@@ -1,8 +1,7 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::Result;
 use std::{
-    io::{Read, Seek, Write},
+    io::{Read, Result, Seek, Write},
     os::unix::prelude::FileExt,
 };
 
