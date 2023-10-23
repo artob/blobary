@@ -14,6 +14,13 @@ pub struct EphemeralBlobStore {
     store: Vec<Blob>,
 }
 
+impl EphemeralBlobStore {
+    #[allow(unused)]
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 impl BlobStore for EphemeralBlobStore {
     fn size(&self) -> BlobID {
         self.store.len() as BlobID

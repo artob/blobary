@@ -15,16 +15,15 @@ categories.workspace = true
 publish.workspace = true
 
 [features]
-default = ["base58", "encrypt", "gzip", "lz4", "magic", "redis", "sqlite", "tracing", "zeroize"]
+default = ["base58", "encrypt", "gzip", "lz4", "magic", "redis", "sqlite", "tracing"]
 base58 = ["dep:bs58"]
-encrypt = ["zeroize"]
+encrypt = ["dep:zeroize"]
 gzip = ["dep:libflate"]
 lz4 = ["dep:lz4_flex"]
 magic = ["dep:infer"] # TODO: file-format
 redis = ["dep:redis"]
 sqlite = []
 tracing = ["dep:tracing"]
-zeroize = ["dep:zeroize"]
 
 [dependencies]
 blake3 = { version = "1.5.0", features = ["mmap", "neon", "rayon", "zeroize"]}

@@ -18,6 +18,4 @@ pub static FEATURES: &[&str] = &[
     "sqlite",
     #[cfg(feature = "tracing")]
     "tracing",
-    #[cfg(feature = "zeroize")]
-    "zeroize",
 ];
