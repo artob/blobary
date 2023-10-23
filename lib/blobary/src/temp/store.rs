@@ -37,17 +37,17 @@ impl BlobStore for EphemeralBlobStore {
         }
     }
 
-    fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Blob> {
-        match self.index.get(&blob_hash) {
-            None => None,
-            Some(blob_id) => self.get_by_id(*blob_id),
-        }
-    }
-
     fn get_by_id(&self, blob_id: BlobID) -> Option<Blob> {
         match blob_id {
             0 => None,
             _ => self.store.get(blob_id - 1).cloned(),
+        }
+    }
+
+    fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Blob> {
+        match self.index.get(&blob_hash) {
+            None => None,
+            Some(blob_id) => self.get_by_id(*blob_id),
         }
     }
 

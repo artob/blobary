@@ -15,11 +15,11 @@ pub trait BlobStore {
     /// Converts a store ID to a BLAKE3 hash.
     fn id_to_hash(&self, blob_id: BlobID) -> Option<BlobHash>;
 
-    /// Fetches a blob by its BLAKE3 hash.
-    fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Blob>;
-
     /// Fetches a blob by its store ID.
     fn get_by_id(&self, blob_id: BlobID) -> Option<Blob>;
+
+    /// Fetches a blob by its BLAKE3 hash.
+    fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Blob>;
 
     /// Stores a blob and returns its store ID.
     fn put(&mut self, blob_data: &mut dyn Read) -> Result<Blob>;

@@ -100,6 +100,10 @@ impl BlobStore for DirectoryBlobStore {
         Some(blob_record.0.into())
     }
 
+    fn get_by_id(&self, blob_id: BlobID) -> Option<Blob> {
+        self.get_by_hash(self.id_to_hash(blob_id)?)
+    }
+
     fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Blob> {
         match self.lookup_id.get(&blob_hash) {
             None => None,
@@ -114,10 +118,6 @@ impl BlobStore for DirectoryBlobStore {
                 })
             }
         }
-    }
-
-    fn get_by_id(&self, blob_id: BlobID) -> Option<Blob> {
-        self.get_by_hash(self.id_to_hash(blob_id)?)
     }
 
     fn put(&mut self, blob_data: &mut dyn Read) -> Result<Blob> {
