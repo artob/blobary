@@ -11,7 +11,7 @@ pub struct BlobIterator<'a> {
 
 impl<'a> BlobIterator<'a> {
     pub fn new(store: &'a mut dyn BlobStore) -> Self {
-        let count = store.size();
+        let count = store.count().unwrap();
         Self {
             store,
             index: 0,
@@ -26,7 +26,7 @@ impl<'a> Iterator for BlobIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         self.index += 1;
         if self.index <= self.count {
-            self.store.get_by_id(self.index)
+            self.store.get_by_id(self.index).unwrap() // FIXME
         } else {
             None
         }

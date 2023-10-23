@@ -7,21 +7,21 @@ pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 pub trait BlobStore {
     /// Returns the number of blobs in this store.
-    fn size(&self) -> usize;
+    fn count(&self) -> Result<usize>;
 
     /// Converts a BLAKE3 hash to a store ID.
-    fn hash_to_id(&self, blob_hash: BlobHash) -> Option<BlobID>;
+    fn hash_to_id(&self, blob_hash: BlobHash) -> Result<Option<BlobID>>;
 
     /// Converts a store ID to a BLAKE3 hash.
-    fn id_to_hash(&self, blob_id: BlobID) -> Option<BlobHash>;
+    fn id_to_hash(&self, blob_id: BlobID) -> Result<Option<BlobHash>>;
 
     /// Fetches a blob by its store ID.
-    fn get_by_id(&self, blob_id: BlobID) -> Option<Blob>;
+    fn get_by_id(&self, blob_id: BlobID) -> Result<Option<Blob>>;
 
     /// Fetches a blob by its BLAKE3 hash.
-    fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Blob>;
+    fn get_by_hash(&self, blob_hash: BlobHash) -> Result<Option<Blob>>;
 
-    /// Stores a blob and returns its store ID.
+    /// Stores a blob and returns its metadata.
     fn put(&mut self, blob_data: &mut dyn Read) -> Result<Blob>;
 
     /// Removes a blob by its BLAKE3 hash.

@@ -26,22 +26,22 @@ impl RedisBlobStore {
 }
 
 impl BlobStore for RedisBlobStore {
-    fn size(&self) -> BlobID {
+    fn count(&self) -> Result<BlobID> {
         let mut conn = self.connection.borrow_mut();
-        conn.zcard(&self.index_key).unwrap_or(0)
+        Ok(conn.zcard(&self.index_key).unwrap_or(0))
     }
 
-    fn hash_to_id(&self, blob_hash: BlobHash) -> Option<BlobID> {
+    fn hash_to_id(&self, blob_hash: BlobHash) -> Result<Option<BlobID>>{
         let mut conn = self.connection.borrow_mut();
         let blob_hash_str = blob_hash.to_hex();
         match conn.zscore::<&str, &str, Option<BlobID>>(&self.index_key, blob_hash_str.as_str()) {
-            Ok(Some(rank)) => Some(rank),
-            Ok(None) => None,
-            Err(_err) => None,
+            Ok(Some(rank)) => Ok(Some(rank)),
+            Ok(None) => Ok(None),
+            Err(err) => Err(err.into()),
         }
     }
 
-    fn id_to_hash(&self, blob_id: BlobID) -> Option<BlobHash> {
+    fn id_to_hash(&self, blob_id: BlobID) -> Result<Option<BlobHash>> {
         let mut conn = self.connection.borrow_mut();
         match conn.zrangebyscore::<&str, BlobID, BlobID, Vec<String>>(
             &self.index_key,
@@ -51,18 +51,18 @@ impl BlobStore for RedisBlobStore {
             Ok(mut results) if results.len() == 1 => {
                 let result = results.pop().unwrap();
                 let blob_hash = BlobHash::from_str(result.as_str()).expect("parse blob hash");
-                Some(blob_hash)
+                Ok(Some(blob_hash))
             }
             Ok(_) => unreachable!("ZRANGEBYSCORE should only return 1 result"),
-            Err(_err) => None,
+            Err(err) => Err(err.into()),
         }
     }
 
-    fn get_by_id(&self, _blob_id: BlobID) -> Option<Blob> {
+    fn get_by_id(&self, _blob_id: BlobID) -> Result<Option<Blob>> {
         todo!("get_by_id not implemented yet") // TODO
     }
 
-    fn get_by_hash(&self, _blob_hash: BlobHash) -> Option<Blob> {
+    fn get_by_hash(&self, _blob_hash: BlobHash) -> Result<Option<Blob>> {
         todo!("get_by_hash not implemented yet") // TODO
     }
 
@@ -104,7 +104,7 @@ impl BlobStore for RedisBlobStore {
     }
 
     fn remove(&mut self, blob_hash: BlobHash) -> Result<bool> {
-        match self.hash_to_id(blob_hash) {
+        match self.hash_to_id(blob_hash)? {
             None => Ok(false), // not found
             Some(blob_id) => {
                 let mut conn = self.connection.borrow_mut();

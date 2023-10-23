@@ -7,23 +7,23 @@ use std::io::Read;
 pub struct SQLiteBlobStore {}
 
 impl BlobStore for SQLiteBlobStore {
-    fn size(&self) -> BlobID {
+    fn count(&self) -> Result<BlobID> {
         todo!("size not implemented yet") // TODO
     }
 
-    fn hash_to_id(&self, _blob_hash: BlobHash) -> Option<BlobID> {
+    fn hash_to_id(&self, _blob_hash: BlobHash) -> Result<Option<BlobID>> {
         todo!("hash_to_id not implemented yet") // TODO
     }
 
-    fn id_to_hash(&self, _blob_id: BlobID) -> Option<BlobHash> {
+    fn id_to_hash(&self, _blob_id: BlobID) -> Result<Option<BlobHash>> {
         todo!("id_to_hash not implemented yet") // TODO
     }
 
-    fn get_by_id(&self, _blob_id: BlobID) -> Option<Blob> {
+    fn get_by_id(&self, _blob_id: BlobID) -> Result<Option<Blob>> {
         todo!("get_by_id not implemented yet") // TODO
     }
 
-    fn get_by_hash(&self, _blob_hash: BlobHash) -> Option<Blob> {
+    fn get_by_hash(&self, _blob_hash: BlobHash) -> Result<Option<Blob>> {
         todo!("get_by_hash not implemented yet") // TODO
     }
 

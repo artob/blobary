@@ -25,28 +25,28 @@ impl S3BlobStore {
 }
 
 impl BlobStore for S3BlobStore {
-    fn size(&self) -> BlobID {
+    fn count(&self) -> Result<BlobID> {
         todo!("size not implemented yet") // TODO
     }
 
-    fn hash_to_id(&self, _blob_hash: BlobHash) -> Option<BlobID> {
+    fn hash_to_id(&self, _blob_hash: BlobHash) -> Result<Option<BlobID>> {
         todo!("hash_to_id not implemented yet") // TODO
     }
 
-    fn id_to_hash(&self, _blob_id: BlobID) -> Option<BlobHash> {
+    fn id_to_hash(&self, _blob_id: BlobID) -> Result<Option<BlobHash>> {
         todo!("id_to_hash not implemented yet") // TODO
     }
 
-    fn get_by_id(&self, _blob_id: BlobID) -> Option<Blob> {
+    fn get_by_id(&self, _blob_id: BlobID) -> Result<Option<Blob>> {
         todo!("get_by_id not implemented yet") // TODO
     }
 
-    fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Blob> {
+    fn get_by_hash(&self, blob_hash: BlobHash) -> Result<Option<Blob>> {
         let blob_path = format!("{}/{}", self.prefix, blob_hash.to_hex());
 
-        self.bucket.get_object(blob_path).ok().and_then(|response| {
-            eprintln!("response: {:?}", response);
+        Ok(self.bucket.get_object(blob_path).map(|response| {
             match response.status_code() {
+                404 => None, // not found
                 200 => {
                     let blob_data = response.bytes().to_vec();
                     let blob_size = blob_data.len();
@@ -59,9 +59,9 @@ impl BlobStore for S3BlobStore {
                         data: Some(blob_data),
                     })
                 },
-                404 | _ => None, // not found
+                _ => todo!(), // FIXME: return Err()
             }
-        })
+        })?)
     }
 
     fn put(&mut self, blob_data: &mut dyn Read) -> Result<Blob> {

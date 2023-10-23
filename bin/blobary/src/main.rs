@@ -260,7 +260,7 @@ impl Commands {
     fn get(blob_hashes: &Vec<BlobHash>, _options: &Options) -> Result<(), Sysexits> {
         let store = open_store()?;
         for blob_hash in blob_hashes {
-            match store.get_by_hash(*blob_hash) {
+            match store.get_by_hash(*blob_hash)? {
                 None => return Err(Sysexits::EX_NOINPUT),
                 Some(blob) => {
                     let blob_data = blob.data.unwrap();

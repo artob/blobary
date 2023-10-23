@@ -71,51 +71,52 @@ impl DirectoryBlobStore {
         })
     }
 
-    pub(crate) fn read_record(&self, blob_id: BlobID) -> Option<PersistentBlobRecord> {
+    pub(crate) fn read_record(&self, blob_id: BlobID) -> Result<Option<PersistentBlobRecord>> {
         let index_file = self.index_file.borrow();
         let record_id: usize = blob_id - 1;
         let mut buffer = [0u8; RECORD_SIZE];
         match index_file.read_exact_at(&mut buffer, (record_id * RECORD_SIZE) as u64) {
             Ok(()) => (),
-            Err(err) if err.kind() == UnexpectedEof => return None,
-            Err(_err) => return None,
+            Err(err) if err.kind() == UnexpectedEof => return Ok(None),
+            Err(err) => return Err(err.into()),
         }
-        let record = PersistentBlobRecord::read_from(&buffer)?;
-        Some(record)
+        Ok(PersistentBlobRecord::read_from(&buffer))
     }
 }
 
 impl BlobStore for DirectoryBlobStore {
-    fn size(&self) -> BlobID {
+    fn count(&self) -> Result<BlobID> {
         // TODO: remove the dependence on #![feature(seek_stream_len)]
-        self.index_file.borrow_mut().stream_len().unwrap() as BlobID / RECORD_SIZE as BlobID
+        Ok(self.index_file.borrow_mut().stream_len().unwrap() as BlobID / RECORD_SIZE as BlobID)
     }
 
-    fn hash_to_id(&self, blob_hash: BlobHash) -> Option<BlobID> {
-        self.lookup_id.get(&blob_hash).copied()
+    fn hash_to_id(&self, blob_hash: BlobHash) -> Result<Option<BlobID>> {
+        Ok(self.lookup_id.get(&blob_hash).copied())
     }
 
-    fn id_to_hash(&self, blob_id: BlobID) -> Option<BlobHash> {
-        let blob_record = self.read_record(blob_id)?;
-        Some(blob_record.0.into())
+    fn id_to_hash(&self, blob_id: BlobID) -> Result<Option<BlobHash>> {
+        Ok(self.read_record(blob_id)?.map(|blob_record| blob_record.0.into()))
     }
 
-    fn get_by_id(&self, blob_id: BlobID) -> Option<Blob> {
-        self.get_by_hash(self.id_to_hash(blob_id)?)
+    fn get_by_id(&self, blob_id: BlobID) -> Result<Option<Blob>> {
+        match self.id_to_hash(blob_id)? {
+            None => Ok(None),
+            Some(blob_hash) => self.get_by_hash(blob_hash),
+        }
     }
 
-    fn get_by_hash(&self, blob_hash: BlobHash) -> Option<Blob> {
+    fn get_by_hash(&self, blob_hash: BlobHash) -> Result<Option<Blob>> {
         match self.lookup_id.get(&blob_hash) {
-            None => None,
+            None => Ok(None),
             Some(blob_id) => {
                 let blob_path = encode_into_path(blob_hash);
-                let mut blob_file = self.dir.open(blob_path).ok()?;
-                Some(Blob {
+                let mut blob_file = self.dir.open(blob_path)?;
+                Ok(Some(Blob {
                     id: *blob_id,
                     hash: blob_hash,
-                    size: blob_file.stream_len().ok()?,
+                    size: blob_file.stream_len()?,
                     data: Some(Rc::new(RefCell::new(blob_file))),
-                })
+                }))
             }
         }
     }
@@ -191,18 +192,18 @@ mod test {
     fn test() {
         let temp_dir = cap_tempfile::tempdir(ambient_authority()).unwrap();
         let mut store = DirectoryBlobStore::open_tempdir(&temp_dir).unwrap();
-        assert_eq!(store.size(), 0);
+        assert_eq!(store.count().unwrap(), 0);
 
         let foo = store.put_string("Foo").unwrap();
-        assert_eq!(store.size(), 1);
+        assert_eq!(store.count().unwrap(), 1);
         assert_eq!(foo.id, 1);
 
         let foo2 = store.put_string("Foo").unwrap();
-        assert_eq!(store.size(), 1);
+        assert_eq!(store.count().unwrap(), 1);
         assert_eq!(foo2.id, 1);
 
         let bar = store.put_string("Bar").unwrap();
-        assert_eq!(store.size(), 2);
+        assert_eq!(store.count().unwrap(), 2);
         assert_eq!(bar.id, 2);
 
         // eprintln!("{}", std::env::temp_dir().to_str().unwrap());
