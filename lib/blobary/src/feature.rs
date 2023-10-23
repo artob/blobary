@@ -14,6 +14,8 @@ pub static FEATURES: &[&str] = &[
     "magic",
     #[cfg(feature = "redis")]
     "redis",
+    #[cfg(feature = "s3")]
+    "s3",
     #[cfg(feature = "sqlite")]
     "sqlite",
     #[cfg(feature = "tracing")]

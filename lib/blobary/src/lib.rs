@@ -23,5 +23,8 @@ pub use temp::*;
 #[cfg(feature = "redis")]
 pub mod redis;
 
+#[cfg(feature = "s3")]
+pub mod s3;
+
 #[cfg(feature = "sqlite")]
 pub mod sqlite;

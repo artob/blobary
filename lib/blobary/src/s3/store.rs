@@ -4,9 +4,9 @@ use crate::{Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, Result};
 use std::io::Read;
 
 #[derive(Default)]
-pub struct FileBlobStore {}
+pub struct S3BlobStore {}
 
-impl BlobStore for FileBlobStore {
+impl BlobStore for S3BlobStore {
     fn size(&self) -> BlobID {
         todo!("size not implemented yet") // TODO
     }
@@ -36,4 +36,4 @@ impl BlobStore for FileBlobStore {
     }
 }
 
-impl BlobStoreExt for FileBlobStore {}
+impl BlobStoreExt for S3BlobStore {}

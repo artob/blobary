@@ -26,6 +26,8 @@ pub fn open_store() -> Result<Box<dyn BlobStore>, Sysexits> {
                         "memory" => open_memory_url(url),
                         #[cfg(feature = "redis")]
                         "redis" => open_redis_url(url),
+                        #[cfg(feature = "s3")]
+                        "s3" => open_s3_url(url),
                         #[cfg(feature = "sqlite")]
                         "sqlite" => open_sqlite_url(url),
                         _ => {
@@ -80,7 +82,12 @@ fn open_redis_url(url: Url) -> Result<Box<dyn BlobStore>, Sysexits> {
     }
 }
 
+#[cfg(feature = "s3")]
+fn open_s3_url(_url: Url) -> Result<Box<dyn BlobStore>, Sysexits> {
+    todo!("Amazon S3 support not implemented yet") // TODO
+}
+
 #[cfg(feature = "sqlite")]
 fn open_sqlite_url(_url: Url) -> Result<Box<dyn BlobStore>, Sysexits> {
-    todo!() // TODO
+    todo!("SQLite support not implemented yet") // TODO
 }

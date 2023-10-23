@@ -59,11 +59,11 @@ impl BlobStore for RedisBlobStore {
     }
 
     fn get_by_hash(&self, _blob_hash: BlobHash) -> Option<Blob> {
-        todo!() // TODO
+        todo!("get_by_hash not implemented yet") // TODO
     }
 
     fn get_by_id(&self, _blob_id: BlobID) -> Option<Blob> {
-        todo!() // TODO
+        todo!("get_by_id not implemented yet") // TODO
     }
 
     fn put(&mut self, blob_data: &mut dyn Read) -> Result<Blob> {

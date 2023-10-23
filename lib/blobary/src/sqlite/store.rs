@@ -8,31 +8,31 @@ pub struct SQLiteBlobStore {}
 
 impl BlobStore for SQLiteBlobStore {
     fn size(&self) -> BlobID {
-        todo!() // TODO
+        todo!("size not implemented yet") // TODO
     }
 
     fn hash_to_id(&self, _blob_hash: BlobHash) -> Option<BlobID> {
-        todo!() // TODO
+        todo!("hash_to_id not implemented yet") // TODO
     }
 
     fn id_to_hash(&self, _blob_id: BlobID) -> Option<BlobHash> {
-        todo!() // TODO
+        todo!("id_to_hash not implemented yet") // TODO
     }
 
     fn get_by_hash(&self, _blob_hash: BlobHash) -> Option<Blob> {
-        todo!() // TODO
+        todo!("get_by_hash not implemented yet") // TODO
     }
 
     fn get_by_id(&self, _blob_id: BlobID) -> Option<Blob> {
-        todo!() // TODO
+        todo!("get_by_id not implemented yet") // TODO
     }
 
     fn put(&mut self, _blob_data: &mut dyn Read) -> Result<Blob> {
-        todo!() // TODO
+        todo!("put not implemented yet") // TODO
     }
 
     fn remove(&mut self, _blob_hash: BlobHash) -> Result<bool> {
-        todo!() // TODO
+        todo!("remove not implemented yet") // TODO
     }
 }
 

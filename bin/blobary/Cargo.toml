@@ -15,7 +15,7 @@ categories.workspace = true
 publish.workspace = true
 
 [features]
-default = ["base58", "encrypt", "gzip", "lz4", "magic", "redis", "sqlite", "tar", "tracing"]
+default = ["base58", "encrypt", "gzip", "lz4", "magic", "redis", "s3", "sqlite", "tar", "tracing"]
 7z = ["dep:sevenz-rust"]
 base58 = ["dep:bs58"]
 dmg = [] # TODO: apple-dmg?
@@ -24,6 +24,7 @@ gzip = ["blobary/gzip"]
 lz4 = ["blobary/lz4"]
 magic = ["blobary/magic"]
 redis = ["blobary/redis"]
+s3 = ["blobary/s3"]
 sqlite = ["blobary/sqlite"]
 tar = ["dep:tar"]
 tracing = ["blobary/tracing"]
