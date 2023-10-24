@@ -1,8 +1,8 @@
 // This is free and unencumbered software released into the public domain.
 
 use crate::{
-    encode_into_path, Blob, BlobHash, BlobHasher, BlobID, BlobStore, BlobStoreExt, File,
-    PersistentBlobRecord, Result, RECORD_SIZE,
+    encode_into_path, Blob, BlobHash, BlobHasher, BlobID, BlobStore, BlobStoreExt,
+    BlobStoreOptions, File, PersistentBlobRecord, Result, RECORD_SIZE,
 };
 use cap_std::{
     ambient_authority,
@@ -28,24 +28,27 @@ pub struct DirectoryBlobStore {
 }
 
 impl DirectoryBlobStore {
-    pub fn open_cwd() -> Result<Self> {
-        Self::open_path(".")
+    pub fn open_cwd(options: BlobStoreOptions) -> Result<Self> {
+        Self::open_path(".", options)
     }
 
-    pub fn open_path(path: impl AsRef<Path>) -> Result<Self> {
-        Self::open_dir(Dir::open_ambient_dir(path, ambient_authority())?)
+    pub fn open_path(path: impl AsRef<Path>, options: BlobStoreOptions) -> Result<Self> {
+        Self::open_dir(Dir::open_ambient_dir(path, ambient_authority())?, options)
     }
 
-    pub fn open_tempdir(dir: &TempDir) -> Result<Self> {
-        Self::open_dir(dir.open_dir(".")?)
+    pub fn open_tempdir(dir: &TempDir, options: BlobStoreOptions) -> Result<Self> {
+        Self::open_dir(dir.open_dir(".")?, options)
     }
 
-    pub fn open_dir(dir: Dir) -> Result<Self> {
-        let mut options = cap_std::fs::File::options();
-        let options = options.create(true).read(true).append(true);
+    pub fn open_dir(dir: Dir, options: BlobStoreOptions) -> Result<Self> {
+        let mut index_options = cap_std::fs::File::options();
+        let index_options = index_options
+            .create(options.writable)
+            .read(true)
+            .append(true);
 
         // Open the index file:
-        let mut index_file = dir.open_with(INDEX_FILE_NAME, options)?;
+        let mut index_file = dir.open_with(INDEX_FILE_NAME, index_options)?;
         index_file.set_permissions(Permissions::from_std(std::fs::Permissions::from_mode(
             0o644,
         )))?;
@@ -193,7 +196,8 @@ mod test {
     #[test]
     fn test() {
         let temp_dir = cap_tempfile::tempdir(ambient_authority()).unwrap();
-        let mut store = DirectoryBlobStore::open_tempdir(&temp_dir).unwrap();
+        let mut store =
+            DirectoryBlobStore::open_tempdir(&temp_dir, BlobStoreOptions::default()).unwrap();
         assert_eq!(store.count().unwrap(), 0);
 
         let foo = store.put_string("Foo").unwrap();

@@ -1,6 +1,8 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::{hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, Result, BlobStoreError};
+use crate::{
+    hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreError, BlobStoreExt, BlobStoreOptions, Result,
+};
 use s3::creds::Credentials;
 use std::{
     cell::RefCell,
@@ -15,7 +17,11 @@ pub struct S3BlobStore {
 
 impl S3BlobStore {
     #[allow(unused)]
-    pub fn open(bucket: impl AsRef<str>, prefix: impl AsRef<str>) -> Result<Self> {
+    pub fn open(
+        bucket: impl AsRef<str>,
+        prefix: impl AsRef<str>,
+        _options: BlobStoreOptions,
+    ) -> Result<Self> {
         let bucket = s3::Bucket::new(
             bucket.as_ref(),
             s3::Region::UsEast1,     // TODO: support other regions

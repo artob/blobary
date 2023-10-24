@@ -1,6 +1,8 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::{hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, Result, BlobStoreError};
+use crate::{
+    hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreError, BlobStoreExt, BlobStoreOptions, Result,
+};
 use redis::Commands;
 use std::{cell::RefCell, io::Read, str::FromStr};
 
@@ -13,7 +15,7 @@ pub struct RedisBlobStore {
 
 impl RedisBlobStore {
     #[allow(unused)]
-    pub fn open(url: impl AsRef<str>) -> Result<Self> {
+    pub fn open(url: impl AsRef<str>, _options: BlobStoreOptions) -> Result<Self> {
         let client = redis::Client::open(url.as_ref())?;
         let connection = client.get_connection()?;
         Ok(Self {

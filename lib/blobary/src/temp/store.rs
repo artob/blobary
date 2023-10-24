@@ -1,6 +1,6 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::{hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, Result};
+use crate::{hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, BlobStoreOptions, Result};
 use std::{
     cell::RefCell,
     collections::HashMap,
@@ -16,7 +16,7 @@ pub struct EphemeralBlobStore {
 
 impl EphemeralBlobStore {
     #[allow(unused)]
-    pub fn new() -> Self {
+    pub fn new(_options: BlobStoreOptions) -> Self {
         Self::default()
     }
 }

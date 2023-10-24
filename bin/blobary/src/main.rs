@@ -11,7 +11,7 @@ use crate::{
     hash::{encode_hash, parse_hash},
     input::{list_inputs, open_inputs},
     output::open_output,
-    store::open_store,
+    store::{open_store, open_store_from_url},
     sysexits::{exit, Sysexits},
 };
 use blobary::{BlobHash, BlobHasher, BlobIterator, BlobStoreExt, DEFAULT_MIME_TYPE};
@@ -206,22 +206,22 @@ impl Commands {
     }
 
     fn check(_options: &Options) -> Result<(), Sysexits> {
-        let _store = open_store()?;
+        let _store = open_store(false)?;
         Ok(()) // TODO
     }
 
     fn compact(_options: &Options) -> Result<(), Sysexits> {
-        let _store = open_store()?;
+        let _store = open_store(true)?;
         Ok(()) // TODO
     }
 
     fn list(options: &Options) -> Result<(), Sysexits> {
-        let mut store = open_store()?;
+        let mut store = open_store(false)?;
         for blob in BlobIterator::new(store.deref_mut()) {
-            let blob_data = blob.data.unwrap();
-            let mut blob_data = blob_data.borrow_mut();
             let blob_hash = encode_hash(blob.hash);
             if options.verbose || options.debug {
+                let blob_data = blob.data.unwrap();
+                let mut blob_data = blob_data.borrow_mut();
                 let blob_type = blob_data.mime_type()?.unwrap_or(DEFAULT_MIME_TYPE);
                 println!("{}\t{}\t{}", blob_hash, blob.size, blob_type);
             } else {
@@ -232,7 +232,7 @@ impl Commands {
     }
 
     fn add(input_paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
-        let mut store = open_store()?;
+        let mut store = open_store(true)?;
         let input_paths = list_inputs(input_paths)?;
         for input_path in input_paths {
             let result = store.put_file(input_path);
@@ -247,7 +247,7 @@ impl Commands {
     }
 
     fn put(input_text: &String, _options: &Options) -> Result<(), Sysexits> {
-        let mut store = open_store()?;
+        let mut store = open_store(true)?;
         let result = store.put_string(input_text);
         if let Err(_err) = result {
             return Err(Sysexits::EX_IOERR);
@@ -258,7 +258,7 @@ impl Commands {
     }
 
     fn get(blob_hashes: &Vec<BlobHash>, _options: &Options) -> Result<(), Sysexits> {
-        let store = open_store()?;
+        let store = open_store(false)?;
         for blob_hash in blob_hashes {
             match store.get_by_hash(*blob_hash)? {
                 None => return Err(Sysexits::EX_NOINPUT),
@@ -274,30 +274,41 @@ impl Commands {
     }
 
     fn remove(blob_hashes: &Vec<BlobHash>, _options: &Options) -> Result<(), Sysexits> {
-        let mut store = open_store()?;
+        let mut store = open_store(true)?;
         for blob_hash in blob_hashes {
             store.remove(*blob_hash)?;
         }
         Ok(())
     }
 
-    fn pull(_remote_url: &Url, _options: &Options) -> Result<(), Sysexits> {
-        let _store = open_store()?;
+    fn pull(remote_url: &Url, _options: &Options) -> Result<(), Sysexits> {
+        let mut _source_store = open_store_from_url(remote_url, false)?;
+        let mut _target_store = open_store(true)?;
         Ok(()) // TODO
     }
 
-    fn push(_remote_url: &Url, _options: &Options) -> Result<(), Sysexits> {
-        let _store = open_store()?;
-        Ok(()) // TODO
+    fn push(remote_url: &Url, options: &Options) -> Result<(), Sysexits> {
+        let mut source_store = open_store(false)?;
+        let mut target_store = open_store_from_url(remote_url, true)?;
+        for blob in BlobIterator::new(source_store.deref_mut()) {
+            let blob_hash = encode_hash(blob.hash);
+            if options.verbose || options.debug {
+                println!("{}", blob_hash);
+            }
+            let blob_data = blob.data.unwrap();
+            let mut blob_data = blob_data.borrow_mut();
+            target_store.put(&mut blob_data.deref_mut())?;
+        }
+        Ok(())
     }
 
     fn sync(_remote_url: &Url, _options: &Options) -> Result<(), Sysexits> {
-        let _store = open_store()?;
+        let _store = open_store(true)?;
         Ok(()) // TODO
     }
 
     fn import(input_paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
-        let mut store = open_store()?;
+        let mut store = open_store(true)?;
         let inputs = open_inputs(input_paths)?;
         for (input_path, input) in inputs {
             let mut tarball = tar::Archive::new(input);
@@ -322,7 +333,7 @@ impl Commands {
     }
 
     fn export(output_path: &Option<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
-        let mut store = open_store()?;
+        let mut store = open_store(false)?;
         let output = open_output(output_path)?;
         let blob_mtime: u64 = SystemTime::now()
             .duration_since(UNIX_EPOCH)

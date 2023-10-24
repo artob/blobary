@@ -1,6 +1,6 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::{Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, Result, BlobStoreError};
+use crate::{Blob, BlobHash, BlobID, BlobStore, BlobStoreError, BlobStoreExt, Result};
 use std::io::Read;
 
 #[derive(Default)]

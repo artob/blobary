@@ -40,6 +40,17 @@ pub trait BlobStoreExt: BlobStore {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct BlobStoreOptions {
+    pub writable: bool,
+}
+
+impl Default for BlobStoreOptions {
+    fn default() -> Self {
+        Self { writable: true }
+    }
+}
+
 impl BlobStoreExt for dyn BlobStore {}
 
 impl<'a> IntoIterator for &'a mut dyn BlobStore {
