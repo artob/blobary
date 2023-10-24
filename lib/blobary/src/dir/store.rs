@@ -58,7 +58,7 @@ impl DirectoryBlobStore {
             match index_file.read_exact(&mut buffer) {
                 Ok(_) => (),
                 Err(err) if err.kind() == UnexpectedEof => break,
-                Err(err) => return Err(Box::new(err)),
+                Err(err) => return Err(err.into()),
             }
             let record = PersistentBlobRecord::read_from(&buffer).unwrap();
             lookup_id.insert(record.0.into(), lookup_id.len() + 1);
@@ -177,7 +177,7 @@ impl BlobStore for DirectoryBlobStore {
                 match self.dir.remove_file(blob_path) {
                     Ok(_) => Ok(true),
                     Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(false),
-                    Err(err) => Err(Box::new(err)),
+                    Err(err) => Err(err.into()),
                 }
             }
         }

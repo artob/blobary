@@ -1,6 +1,6 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::BlobHasher;
+use crate::{error::BlobHashError, BlobHasher};
 use std::{
     cell::RefCell,
     io::{Cursor, Read, Result, Seek, Write},
@@ -19,28 +19,24 @@ pub type BlobID = usize;
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct BlobHash(pub blake3::Hash);
 
+pub type BlobHashResult<T> = std::result::Result<T, BlobHashError>;
+
 impl BlobHash {
     pub fn zero() -> Self {
         Self::from_bytes([0u8; BLOB_HASH_LEN])
     }
 
-    pub fn from_vec(bytes: &Vec<u8>) -> Result<Self> {
+    pub fn from_vec(bytes: &Vec<u8>) -> BlobHashResult<Self> {
         match bytes.len() {
             BLOB_HASH_LEN => Ok(Self::from_bytes(bytes.as_slice().try_into().unwrap())),
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("invalid blob hash: {:?}", bytes),
-            )),
+            n => Err(BlobHashError::InvalidLength(n)),
         }
     }
 
-    pub fn from_slice(bytes: &[u8]) -> Result<Self> {
+    pub fn from_slice(bytes: &[u8]) -> BlobHashResult<Self> {
         match bytes.len() {
             BLOB_HASH_LEN => Ok(Self::from_bytes(bytes.try_into().unwrap())),
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("invalid blob hash: {:?}", bytes),
-            )),
+            n => Err(BlobHashError::InvalidLength(n)),
         }
     }
 
@@ -48,19 +44,22 @@ impl BlobHash {
         Self(blake3::Hash::from_bytes(bytes))
     }
 
-    pub fn from_hex(input: impl AsRef<[u8]>) -> Result<Self> {
-        Ok(Self(blake3::Hash::from_hex(input).unwrap())) // FIXME
+    pub fn from_hex(input: impl AsRef<[u8]>) -> BlobHashResult<Self> {
+        let input = input.as_ref();
+        match blake3::Hash::from_hex(input) {
+            Ok(hash) => Ok(Self(hash)),
+            Err(_) => Err(BlobHashError::InvalidInput(
+                String::from_utf8_lossy(input).to_string(),
+            )),
+        }
     }
 
     #[cfg(feature = "base58")]
-    pub fn from_base58(input: impl AsRef<str>) -> Result<Self> {
+    pub fn from_base58(input: impl AsRef<str>) -> BlobHashResult<Self> {
         let input = input.as_ref();
         match bs58::decode(input).into_vec() {
             Ok(bytes) => Self::from_vec(&bytes),
-            Err(_) => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("invalid blob hash: {}", input),
-            )),
+            Err(_) => Err(BlobHashError::InvalidInput(input.to_string())),
         }
     }
 
@@ -71,17 +70,14 @@ impl BlobHash {
 }
 
 impl std::str::FromStr for BlobHash {
-    type Err = std::io::Error;
+    type Err = BlobHashError;
 
-    fn from_str(input: &str) -> Result<Self> {
+    fn from_str(input: &str) -> BlobHashResult<Self> {
         Self::from_hex(input).or_else(|_| {
             #[cfg(feature = "base58")]
             return Self::from_base58(input);
             #[cfg(not(feature = "base58"))]
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("invalid blob hash: {}", input),
-            ));
+            return Err(BlobHashError::InvalidInput(input.to_string()));
         })
     }
 }

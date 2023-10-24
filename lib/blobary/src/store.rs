@@ -1,9 +1,9 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::{Blob, BlobHash, BlobID, BlobIterator};
+use crate::{Blob, BlobHash, BlobID, BlobIterator, BlobStoreError};
 use std::{io::Read, path::Path};
 
-pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+pub type Result<T> = std::result::Result<T, BlobStoreError>;
 
 pub trait BlobStore {
     /// Returns the number of blobs in this store.

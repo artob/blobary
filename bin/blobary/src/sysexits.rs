@@ -1,5 +1,7 @@
 // This is free and unencumbered software released into the public domain.
 
+use blobary::BlobStoreError;
+
 #[allow(unused)]
 pub type Result = std::result::Result<(), Sysexits>;
 
@@ -56,6 +58,16 @@ impl From<std::io::Error> for Sysexits {
             WouldBlock => Sysexits::EX_IOERR,
             WriteZero => Sysexits::EX_IOERR,
             _ => Sysexits::EX_UNAVAILABLE, // catch-all
+        }
+    }
+}
+
+impl From<BlobStoreError> for Sysexits {
+    fn from(err: BlobStoreError) -> Self {
+        use BlobStoreError::*;
+        match err {
+            IO(err) => err.into(),
+            Other(err) => err.into(),
         }
     }
 }

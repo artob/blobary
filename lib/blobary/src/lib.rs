@@ -4,6 +4,7 @@
 
 mod blob;
 mod dir;
+mod error;
 mod feature;
 mod file;
 mod hasher;
@@ -13,6 +14,7 @@ mod temp;
 
 pub use blob::*;
 pub use dir::*;
+pub use error::*;
 pub use feature::*;
 pub use file::*;
 pub use hasher::*;
