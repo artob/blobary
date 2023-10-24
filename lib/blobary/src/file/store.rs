@@ -1,6 +1,6 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::{Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, Result};
+use crate::{Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, Result, BlobStoreError};
 use std::io::Read;
 
 #[derive(Default)]
@@ -8,31 +8,31 @@ pub struct FileBlobStore {}
 
 impl BlobStore for FileBlobStore {
     fn count(&self) -> Result<BlobID> {
-        todo!("size not implemented yet") // TODO
+        Err(BlobStoreError::Unimplemented("count".to_string())) // TODO
     }
 
     fn hash_to_id(&self, _blob_hash: BlobHash) -> Result<Option<BlobID>> {
-        todo!("hash_to_id not implemented yet") // TODO
+        Err(BlobStoreError::Unimplemented("hash_to_id".to_string())) // TODO
     }
 
     fn id_to_hash(&self, _blob_id: BlobID) -> Result<Option<BlobHash>> {
-        todo!("id_to_hash not implemented yet") // TODO
+        Err(BlobStoreError::Unimplemented("id_to_hash".to_string())) // TODO
     }
 
     fn get_by_id(&self, _blob_id: BlobID) -> Result<Option<Blob>> {
-        todo!("get_by_id not implemented yet") // TODO
+        Err(BlobStoreError::Unimplemented("get_by_id".to_string())) // TODO
     }
 
     fn get_by_hash(&self, _blob_hash: BlobHash) -> Result<Option<Blob>> {
-        todo!("get_by_hash not implemented yet") // TODO
+        Err(BlobStoreError::Unimplemented("get_by_hash".to_string())) // TODO
     }
 
     fn put(&mut self, _blob_data: &mut dyn Read) -> Result<Blob> {
-        todo!("put not implemented yet") // TODO
+        Err(BlobStoreError::Unimplemented("put".to_string())) // TODO
     }
 
     fn remove(&mut self, _blob_hash: BlobHash) -> Result<bool> {
-        todo!("remove not implemented yet") // TODO
+        Err(BlobStoreError::Unimplemented("remove".to_string())) // TODO
     }
 }
 

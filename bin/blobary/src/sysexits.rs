@@ -66,6 +66,9 @@ impl From<BlobStoreError> for Sysexits {
     fn from(err: BlobStoreError) -> Self {
         use BlobStoreError::*;
         match err {
+            Unsupported => Sysexits::EX_SOFTWARE,
+            Unimplemented(_) => Sysexits::EX_SOFTWARE,
+            Unexpected => Sysexits::EX_TEMPFAIL,
             IO(err) => err.into(),
             Other(err) => err.into(),
         }

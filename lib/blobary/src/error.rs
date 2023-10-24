@@ -14,6 +14,12 @@ pub enum BlobHashError {
 
 #[derive(Error, Debug)]
 pub enum BlobStoreError {
+    #[error("unsupported operation")]
+    Unsupported,
+    #[error("unimplemented operation: {0}")]
+    Unimplemented(String),
+    #[error("unexpected error")]
+    Unexpected,
     #[error(transparent)]
     IO(#[from] std::io::Error),
     #[error(transparent)]

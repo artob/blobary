@@ -1,6 +1,6 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::{hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, Result};
+use crate::{hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, Result, BlobStoreError};
 use s3::creds::Credentials;
 use std::{
     cell::RefCell,
@@ -30,42 +30,45 @@ impl S3BlobStore {
 
 impl BlobStore for S3BlobStore {
     fn count(&self) -> Result<BlobID> {
-        todo!("size not implemented yet") // TODO
+        Err(BlobStoreError::Unsupported)
     }
 
     fn hash_to_id(&self, _blob_hash: BlobHash) -> Result<Option<BlobID>> {
-        todo!("hash_to_id not implemented yet") // TODO
+        Err(BlobStoreError::Unsupported)
     }
 
     fn id_to_hash(&self, _blob_id: BlobID) -> Result<Option<BlobHash>> {
-        todo!("id_to_hash not implemented yet") // TODO
+        Err(BlobStoreError::Unsupported)
     }
 
     fn get_by_id(&self, _blob_id: BlobID) -> Result<Option<Blob>> {
-        todo!("get_by_id not implemented yet") // TODO
+        Err(BlobStoreError::Unsupported)
     }
 
     fn get_by_hash(&self, blob_hash: BlobHash) -> Result<Option<Blob>> {
         let blob_path = format!("{}/{}", self.prefix, blob_hash);
 
-        Ok(self.bucket.get_object(blob_path).map(|response| {
-            match response.status_code() {
-                404 => None, // not found
-                200 => {
-                    let blob_data = response.bytes().to_vec();
-                    let blob_size = blob_data.len();
-                    let blob_data = Cursor::new(blob_data);
-                    let blob_data = Rc::new(RefCell::new(blob_data));
-                    Some(Blob {
-                        id: 0, // FIXME
-                        hash: blob_hash,
-                        size: blob_size as _,
-                        data: Some(blob_data),
-                    })
+        match self.bucket.get_object(blob_path) {
+            Err(err) => Err(err.into()),
+            Ok(response) => {
+                match response.status_code() {
+                    404 => Ok(None), // not found
+                    200 => {
+                        let blob_data = response.bytes().to_vec();
+                        let blob_size = blob_data.len();
+                        let blob_data = Cursor::new(blob_data);
+                        let blob_data = Rc::new(RefCell::new(blob_data));
+                        Ok(Some(Blob {
+                            id: 0, // FIXME
+                            hash: blob_hash,
+                            size: blob_size as _,
+                            data: Some(blob_data),
+                        }))
+                    }
+                    _ => Err(BlobStoreError::Unexpected.into()),
                 }
-                _ => todo!(), // FIXME: return Err()
             }
-        })?)
+        }
     }
 
     fn put(&mut self, blob_data: &mut dyn Read) -> Result<Blob> {

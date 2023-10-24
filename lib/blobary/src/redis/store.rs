@@ -1,6 +1,6 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::{hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, Result};
+use crate::{hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, Result, BlobStoreError};
 use redis::Commands;
 use std::{cell::RefCell, io::Read, str::FromStr};
 
@@ -59,11 +59,11 @@ impl BlobStore for RedisBlobStore {
     }
 
     fn get_by_id(&self, _blob_id: BlobID) -> Result<Option<Blob>> {
-        todo!("get_by_id not implemented yet") // TODO
+        Err(BlobStoreError::Unimplemented("get_by_id".to_string())) // TODO
     }
 
     fn get_by_hash(&self, _blob_hash: BlobHash) -> Result<Option<Blob>> {
-        todo!("get_by_hash not implemented yet") // TODO
+        Err(BlobStoreError::Unimplemented("get_by_hash".to_string())) // TODO
     }
 
     fn put(&mut self, blob_data: &mut dyn Read) -> Result<Blob> {
