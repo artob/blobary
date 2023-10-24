@@ -31,7 +31,7 @@ impl BlobStore for RedisBlobStore {
         Ok(conn.zcard(&self.index_key).unwrap_or(0))
     }
 
-    fn hash_to_id(&self, blob_hash: BlobHash) -> Result<Option<BlobID>>{
+    fn hash_to_id(&self, blob_hash: BlobHash) -> Result<Option<BlobID>> {
         let mut conn = self.connection.borrow_mut();
         let blob_hash_str = blob_hash.to_hex();
         match conn.zscore::<&str, &str, Option<BlobID>>(&self.index_key, blob_hash_str.as_str()) {

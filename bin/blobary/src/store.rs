@@ -93,7 +93,7 @@ fn open_store_from_s3_url(url: Url) -> Result<Box<dyn BlobStore>, Sysexits> {
     let bucket_prefix = match url_path.chars().last() {
         None => "",
         Some('/') => &url_path[..url_path.len() - 1],
-        _ => &url_path,
+        _ => url_path,
     };
     match blobary::s3::S3BlobStore::open(bucket_name, bucket_prefix) {
         Ok(store) => Ok(Box::new(store)),

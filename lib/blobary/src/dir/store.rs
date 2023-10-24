@@ -95,7 +95,9 @@ impl BlobStore for DirectoryBlobStore {
     }
 
     fn id_to_hash(&self, blob_id: BlobID) -> Result<Option<BlobHash>> {
-        Ok(self.read_record(blob_id)?.map(|blob_record| blob_record.0.into()))
+        Ok(self
+            .read_record(blob_id)?
+            .map(|blob_record| blob_record.0.into()))
     }
 
     fn get_by_id(&self, blob_id: BlobID) -> Result<Option<Blob>> {

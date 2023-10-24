@@ -192,7 +192,7 @@ impl Commands {
         let input_paths = list_inputs(input_paths)?;
         for input_path in input_paths {
             let mut hasher = BlobHasher::new();
-            if let Err(_err) = hasher.update_mmap(input_path) {
+            if let Err(_err) = hasher.update_from_path(input_path) {
                 return Err(Sysexits::EX_IOERR);
             }
             let hash = hasher.finalize();

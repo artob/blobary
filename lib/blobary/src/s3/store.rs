@@ -2,7 +2,11 @@
 
 use crate::{hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, Result};
 use s3::creds::Credentials;
-use std::{io::{Read, Cursor}, rc::Rc, cell::RefCell};
+use std::{
+    cell::RefCell,
+    io::{Cursor, Read},
+    rc::Rc,
+};
 
 pub struct S3BlobStore {
     bucket: s3::Bucket,
@@ -42,7 +46,7 @@ impl BlobStore for S3BlobStore {
     }
 
     fn get_by_hash(&self, blob_hash: BlobHash) -> Result<Option<Blob>> {
-        let blob_path = format!("{}/{}", self.prefix, blob_hash.to_hex());
+        let blob_path = format!("{}/{}", self.prefix, blob_hash);
 
         Ok(self.bucket.get_object(blob_path).map(|response| {
             match response.status_code() {
@@ -58,7 +62,7 @@ impl BlobStore for S3BlobStore {
                         size: blob_size as _,
                         data: Some(blob_data),
                     })
-                },
+                }
                 _ => todo!(), // FIXME: return Err()
             }
         })?)
@@ -74,7 +78,7 @@ impl BlobStore for S3BlobStore {
             size: buffer.len() as u64,
             data: None,
         };
-        let blob_path = format!("{}/{}", self.prefix, blob.hash.to_hex());
+        let blob_path = format!("{}/{}", self.prefix, blob.hash);
 
         match self
             .bucket
@@ -86,7 +90,7 @@ impl BlobStore for S3BlobStore {
     }
 
     fn remove(&mut self, blob_hash: BlobHash) -> Result<bool> {
-        let blob_path = format!("{}/{}", self.prefix, blob_hash.to_hex());
+        let blob_path = format!("{}/{}", self.prefix, blob_hash);
 
         match self.bucket.delete_object(blob_path.as_str()) {
             Ok(_response) => Ok(true), // can't determine if it existed or not

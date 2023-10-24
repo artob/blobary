@@ -31,7 +31,6 @@ tracing = ["blobary/tracing"]
 zip = ["dep:zip"]
 
 [dependencies]
-#arrayvec = { version = "0.7.4", features = ["zeroize"] }
 argfile = "0.1.6"
 bs58 = { version = "0.5.0", optional = true }
 blobary.workspace = true

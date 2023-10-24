@@ -27,5 +27,5 @@ pub fn encode_hash(blob_hash: BlobHash) -> String {
     #[cfg(not(feature = "base58"))]
     return blob_hash.to_hex().to_string();
     #[cfg(feature = "base58")]
-    return bs58::encode(blob_hash.as_bytes()).into_string();
+    return bs58::encode(blob_hash.0.as_bytes()).into_string();
 }

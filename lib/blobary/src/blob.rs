@@ -7,6 +7,7 @@ use std::{
     rc::Rc,
 };
 
+pub const BLOB_HASH_LEN: usize = 32;
 pub const DEFAULT_MIME_TYPE: &str = "application/octet-stream";
 
 /// A blob's locally-unique sequence ID in a [`BlobStore`].
@@ -15,7 +16,99 @@ pub type BlobID = usize;
 
 /// The blob's globally-unique cryptographic BLAKE3 hash.
 #[allow(unused)]
-pub type BlobHash = blake3::Hash;
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+pub struct BlobHash(pub blake3::Hash);
+
+impl BlobHash {
+    pub fn zero() -> Self {
+        Self::from_bytes([0u8; BLOB_HASH_LEN])
+    }
+
+    pub fn from_vec(bytes: &Vec<u8>) -> Result<Self> {
+        match bytes.len() {
+            BLOB_HASH_LEN => Ok(Self::from_bytes(bytes.as_slice().try_into().unwrap())),
+            _ => Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("invalid blob hash: {:?}", bytes),
+            )),
+        }
+    }
+
+    pub fn from_slice(bytes: &[u8]) -> Result<Self> {
+        match bytes.len() {
+            BLOB_HASH_LEN => Ok(Self::from_bytes(bytes.try_into().unwrap())),
+            _ => Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("invalid blob hash: {:?}", bytes),
+            )),
+        }
+    }
+
+    pub fn from_bytes(bytes: [u8; BLOB_HASH_LEN]) -> Self {
+        Self(blake3::Hash::from_bytes(bytes))
+    }
+
+    pub fn from_hex(input: impl AsRef<[u8]>) -> Result<Self> {
+        Ok(Self(blake3::Hash::from_hex(input).unwrap())) // FIXME
+    }
+
+    #[cfg(feature = "base58")]
+    pub fn from_base58(input: impl AsRef<str>) -> Result<Self> {
+        let input = input.as_ref();
+        match bs58::decode(input).into_vec() {
+            Ok(bytes) => Self::from_vec(&bytes),
+            Err(_) => Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("invalid blob hash: {}", input),
+            )),
+        }
+    }
+
+    /// Returns the blob's hash as a hex string.
+    pub fn to_hex(&self) -> arrayvec::ArrayString<64> {
+        self.0.to_hex()
+    }
+}
+
+impl std::str::FromStr for BlobHash {
+    type Err = std::io::Error;
+
+    fn from_str(input: &str) -> Result<Self> {
+        Self::from_hex(input).or_else(|_| {
+            #[cfg(feature = "base58")]
+            return Self::from_base58(input);
+            #[cfg(not(feature = "base58"))]
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("invalid blob hash: {}", input),
+            ));
+        })
+    }
+}
+
+impl From<[u8; BLOB_HASH_LEN]> for BlobHash {
+    fn from(bytes: [u8; BLOB_HASH_LEN]) -> Self {
+        Self(blake3::Hash::from(bytes))
+    }
+}
+
+impl From<BlobHash> for [u8; BLOB_HASH_LEN] {
+    fn from(blob_hash: BlobHash) -> Self {
+        blob_hash.0.into()
+    }
+}
+
+impl std::fmt::Debug for BlobHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_hex())
+    }
+}
+
+impl std::fmt::Display for BlobHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_hex())
+    }
+}
 
 /// TODO
 #[derive(Clone)]
@@ -58,8 +151,7 @@ pub trait BlobData: Seek + Read {
         }
         std::io::copy(self, &mut hasher)?;
         self.seek(std::io::SeekFrom::Start(pos))?;
-        let hash = hasher.finalize();
-        Ok(hash)
+        Ok(hasher.finalize())
     }
 }
 
