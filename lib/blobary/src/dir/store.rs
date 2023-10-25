@@ -12,6 +12,7 @@ use cap_tempfile::{TempDir, TempFile};
 use std::{
     cell::RefCell,
     collections::HashMap,
+    fs::create_dir_all,
     io::{ErrorKind::UnexpectedEof, Read, Seek, Write},
     os::unix::prelude::PermissionsExt,
     path::Path,
@@ -33,6 +34,9 @@ impl DirectoryBlobStore {
     }
 
     pub fn open_path(path: impl AsRef<Path>, options: BlobStoreOptions) -> Result<Self> {
+        if options.writable {
+            create_dir_all(path.as_ref())?;
+        }
         Self::open_dir(Dir::open_ambient_dir(path, ambient_authority())?, options)
     }
 
