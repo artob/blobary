@@ -5,6 +5,7 @@ mod hash;
 mod input;
 mod output;
 mod store;
+mod sync;
 mod sysexits;
 
 use crate::{
@@ -24,6 +25,7 @@ use std::{
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
+use sync::copy_blobs;
 use tar::{EntryType, Header};
 use url::Url;
 
@@ -281,30 +283,25 @@ impl Commands {
         Ok(())
     }
 
-    fn pull(remote_url: &Url, _options: &Options) -> Result<(), Sysexits> {
-        let mut _source_store = open_store_from_url(remote_url, false)?;
-        let mut _target_store = open_store(true)?;
-        Ok(()) // TODO
+    fn pull(remote_url: &Url, options: &Options) -> Result<(), Sysexits> {
+        let mut source_store = open_store_from_url(remote_url, false)?;
+        let mut target_store = open_store(true)?;
+        copy_blobs(&mut source_store, &mut target_store, options).map(|_| ())
     }
 
     fn push(remote_url: &Url, options: &Options) -> Result<(), Sysexits> {
         let mut source_store = open_store(false)?;
         let mut target_store = open_store_from_url(remote_url, true)?;
-        for blob in BlobIterator::new(source_store.deref_mut()) {
-            let blob_hash = encode_hash(blob.hash);
-            if options.verbose || options.debug {
-                println!("{}", blob_hash);
-            }
-            let blob_data = blob.data.unwrap();
-            let mut blob_data = blob_data.borrow_mut();
-            target_store.put(&mut blob_data.deref_mut())?;
-        }
-        Ok(())
+        copy_blobs(&mut source_store, &mut target_store, options).map(|_| ())
     }
 
-    fn sync(_remote_url: &Url, _options: &Options) -> Result<(), Sysexits> {
-        let _store = open_store(true)?;
-        Ok(()) // TODO
+    fn sync(remote_url: &Url, options: &Options) -> Result<(), Sysexits> {
+        // We download before uploading to minimize remote iteration overhead.
+        let mut source_store = open_store_from_url(remote_url, true)?;
+        let mut target_store = open_store(true)?;
+        copy_blobs(&mut source_store, &mut target_store, options)
+            .and_then(|_| copy_blobs(&mut target_store, &mut source_store, options))
+            .map(|_| ())
     }
 
     fn import(input_paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {

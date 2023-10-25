@@ -26,7 +26,7 @@ impl<'a> Iterator for BlobIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         self.index += 1;
         if self.index <= self.count {
-            self.store.get_by_id(self.index).unwrap() // FIXME
+            self.store.get_by_id(self.index).unwrap() // FIXME: handle deleted blobs
         } else {
             None
         }
