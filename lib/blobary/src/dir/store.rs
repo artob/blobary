@@ -107,6 +107,10 @@ impl BlobStore for DirectoryBlobStore {
             .map(|blob_record| blob_record.0.into()))
     }
 
+    fn contains_hash(&self, blob_hash: BlobHash) -> Result<bool> {
+        Ok(self.lookup_id.contains_key(&blob_hash))
+    }
+
     fn get_by_id(&self, blob_id: BlobID) -> Result<Option<Blob>> {
         match self.id_to_hash(blob_id)? {
             None => Ok(None),

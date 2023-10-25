@@ -19,6 +19,10 @@ impl BlobStore for FileBlobStore {
         Err(BlobStoreError::Unimplemented("id_to_hash".to_string())) // TODO
     }
 
+    fn contains_hash(&self, _blob_hash: BlobHash) -> Result<bool> {
+        Err(BlobStoreError::Unimplemented("contains_hash".to_string())) // TODO
+    }
+
     fn get_by_id(&self, _blob_id: BlobID) -> Result<Option<Blob>> {
         Err(BlobStoreError::Unimplemented("get_by_id".to_string())) // TODO
     }

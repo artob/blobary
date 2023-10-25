@@ -15,6 +15,10 @@ pub fn copy_blobs(
         let blob_data = blob.data.unwrap();
         let mut blob_data = blob_data.borrow_mut();
 
+        if target_store.contains_hash(blob.hash)? {
+            continue;
+        }
+
         let (created, _) = target_store.put(&mut blob_data.deref_mut())?;
         if created && (options.verbose || options.debug) {
             println!("{}", encode_hash(blob.hash));

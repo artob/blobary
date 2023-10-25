@@ -15,6 +15,9 @@ pub trait BlobStore {
     /// Converts a store ID to a BLAKE3 hash.
     fn id_to_hash(&self, blob_id: BlobID) -> Result<Option<BlobHash>>;
 
+    /// Determines if the store contains a blob with the given BLAKE3 hash.
+    fn contains_hash(&self, blob_hash: BlobHash) -> Result<bool>;
+
     /// Fetches a blob by its store ID.
     fn get_by_id(&self, blob_id: BlobID) -> Result<Option<Blob>>;
 
@@ -29,6 +32,11 @@ pub trait BlobStore {
 }
 
 pub trait BlobStoreExt: BlobStore {
+    /// Determines if the store contains no blobs.
+    fn is_empty(&self) -> Result<bool> {
+        Ok(self.count()? == 0)
+    }
+
     /// Stores a blob and returns its store ID.
     fn put_string(&mut self, data: impl AsRef<str>) -> Result<(bool, Blob)> {
         self.put(&mut data.as_ref().as_bytes())

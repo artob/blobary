@@ -47,6 +47,21 @@ impl BlobStore for S3BlobStore {
         Err(BlobStoreError::Unsupported)
     }
 
+    fn contains_hash(&self, blob_hash: BlobHash) -> Result<bool> {
+        let blob_path = format!("{}/{}", self.prefix, blob_hash);
+
+        match self.bucket.head_object(blob_path) {
+            Err(err) => Err(err.into()),
+            Ok((_, status_code)) => {
+                match status_code {
+                    404 => Ok(false), // not found
+                    200 => Ok(true),  // found
+                    _ => Err(BlobStoreError::Unexpected.into()),
+                }
+            }
+        }
+    }
+
     fn get_by_id(&self, _blob_id: BlobID) -> Result<Option<Blob>> {
         Err(BlobStoreError::Unsupported)
     }
@@ -59,7 +74,7 @@ impl BlobStore for S3BlobStore {
             Ok(response) => {
                 match response.status_code() {
                     404 => Ok(None), // not found
-                    200 => {
+                    200 => { // found
                         let blob_data = response.bytes().to_vec();
                         let blob_size = blob_data.len();
                         let blob_data = Cursor::new(blob_data);

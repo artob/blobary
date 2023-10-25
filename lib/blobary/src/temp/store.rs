@@ -37,6 +37,10 @@ impl BlobStore for EphemeralBlobStore {
         })
     }
 
+    fn contains_hash(&self, blob_hash: BlobHash) -> Result<bool> {
+        Ok(self.index.contains_key(&blob_hash))
+    }
+
     fn get_by_id(&self, blob_id: BlobID) -> Result<Option<Blob>> {
         Ok(match blob_id {
             0 => None,
