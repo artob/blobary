@@ -130,7 +130,7 @@ impl BlobStore for DirectoryBlobStore {
         }
     }
 
-    fn put(&mut self, blob_data: &mut dyn Read) -> Result<Blob> {
+    fn put(&mut self, blob_data: &mut dyn Read) -> Result<(bool, Blob)> {
         // Buffer the blob data in a temporary file:
         let mut temp_file = TempFile::new(&self.dir)?;
         let blob_size = std::io::copy(blob_data, &mut temp_file)?;
@@ -143,12 +143,15 @@ impl BlobStore for DirectoryBlobStore {
         // Check if the blob is already in the store:
         let blob_hash = blob_hasher.finalize();
         if let Some(blob_id) = self.lookup_id.get(&blob_hash) {
-            return Ok(Blob {
-                id: *blob_id,
-                hash: blob_hash,
-                size: blob_size,
-                data: None,
-            });
+            return Ok((
+                false,
+                Blob {
+                    id: *blob_id,
+                    hash: blob_hash,
+                    size: blob_size,
+                    data: None,
+                },
+            ));
         }
 
         // Rename the temporary file to its final name:
@@ -168,12 +171,15 @@ impl BlobStore for DirectoryBlobStore {
         index_file.sync_all()?;
         self.lookup_id.insert(blob_hash, blob_id);
 
-        Ok(Blob {
-            id: blob_id,
-            hash: blob_hash,
-            size: blob_size,
-            data: None,
-        })
+        Ok((
+            true,
+            Blob {
+                id: blob_id,
+                hash: blob_hash,
+                size: blob_size,
+                data: None,
+            },
+        ))
     }
 
     fn remove(&mut self, blob_hash: BlobHash) -> Result<bool> {
@@ -204,15 +210,15 @@ mod test {
             DirectoryBlobStore::open_tempdir(&temp_dir, BlobStoreOptions::default()).unwrap();
         assert_eq!(store.count().unwrap(), 0);
 
-        let foo = store.put_string("Foo").unwrap();
+        let (_, foo) = store.put_string("Foo").unwrap();
         assert_eq!(store.count().unwrap(), 1);
         assert_eq!(foo.id, 1);
 
-        let foo2 = store.put_string("Foo").unwrap();
+        let (_, foo2) = store.put_string("Foo").unwrap();
         assert_eq!(store.count().unwrap(), 1);
         assert_eq!(foo2.id, 1);
 
-        let bar = store.put_string("Bar").unwrap();
+        let (_, bar) = store.put_string("Bar").unwrap();
         assert_eq!(store.count().unwrap(), 2);
         assert_eq!(bar.id, 2);
 

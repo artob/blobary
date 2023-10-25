@@ -68,7 +68,7 @@ impl BlobStore for RedisBlobStore {
         Err(BlobStoreError::Unimplemented("get_by_hash".to_string())) // TODO
     }
 
-    fn put(&mut self, blob_data: &mut dyn Read) -> Result<Blob> {
+    fn put(&mut self, blob_data: &mut dyn Read) -> Result<(bool, Blob)> {
         let mut conn = self.connection.borrow_mut();
         let blob_id: BlobID = match conn.incr(&self.count_key, 1) {
             Ok(value) => value,
@@ -94,10 +94,10 @@ impl BlobStore for RedisBlobStore {
             .arg(blob_hash_str.as_str());
 
         match cmd.query(&mut conn) {
-            Ok(0) => Ok(blob),
+            Ok(0) => Ok((false, blob)), // already existed
             Ok(1) => match conn.hset_nx(&self.store_key, blob.id, buffer) {
-                Ok(false) => Ok(blob), // already existed
-                Ok(true) => Ok(blob),  // just created
+                Ok(false) => Ok((false, blob)), // already existed
+                Ok(true) => Ok((true, blob)),   // just created
                 Err(err) => Err(err.into()),
             },
             Ok(_) => unreachable!("ZADD should only return 0 or 1"),

@@ -77,7 +77,7 @@ impl BlobStore for S3BlobStore {
         }
     }
 
-    fn put(&mut self, blob_data: &mut dyn Read) -> Result<Blob> {
+    fn put(&mut self, blob_data: &mut dyn Read) -> Result<(bool, Blob)> {
         let mut buffer = Vec::new();
         blob_data.read_to_end(&mut buffer)?;
 
@@ -93,7 +93,7 @@ impl BlobStore for S3BlobStore {
             .bucket
             .put_object(blob_path.as_str(), buffer.as_slice())
         {
-            Ok(_response) => Ok(blob),
+            Ok(_response) => Ok((true, blob)),
             Err(err) => Err(err.into()),
         }
     }

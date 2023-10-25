@@ -233,29 +233,38 @@ impl Commands {
         Ok(())
     }
 
-    fn add(input_paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
+    fn add(input_paths: &Vec<impl AsRef<Path>>, options: &Options) -> Result<(), Sysexits> {
         let mut store = open_store(true)?;
         let input_paths = list_inputs(input_paths)?;
         for input_path in input_paths {
-            let result = store.put_file(input_path);
-            if let Err(err) = result {
-                eprintln!("blobary: {}", err);
-                return Err(Sysexits::EX_IOERR);
+            match store.put_file(input_path) {
+                Err(err) => {
+                    eprintln!("blobary: {}", err);
+                    return Err(Sysexits::EX_IOERR);
+                }
+                Ok((created, blob)) => {
+                    if created && (options.verbose || options.debug) {
+                        println!("{}", encode_hash(blob.hash));
+                    }
+                }
             }
-            let blob = result.unwrap();
-            println!("{}", encode_hash(blob.hash));
         }
         Ok(())
     }
 
-    fn put(input_text: &String, _options: &Options) -> Result<(), Sysexits> {
+    fn put(input_text: &String, options: &Options) -> Result<(), Sysexits> {
         let mut store = open_store(true)?;
-        let result = store.put_string(input_text);
-        if let Err(_err) = result {
-            return Err(Sysexits::EX_IOERR);
+        match store.put_string(input_text) {
+            Err(err) => {
+                eprintln!("blobary: {}", err);
+                return Err(Sysexits::EX_IOERR);
+            }
+            Ok((_created, blob)) => {
+                if options.verbose || options.debug {
+                    println!("{}", encode_hash(blob.hash));
+                }
+            }
         }
-        let blob = result.unwrap();
-        println!("{}", encode_hash(blob.hash));
         Ok(())
     }
 
@@ -316,7 +325,7 @@ impl Commands {
                 // only base-16 supported here
                 match BlobHash::from_hex(file_path) {
                     Ok(file_hash) => {
-                        let blob = store.put(&mut file)?;
+                        let (_, blob) = store.put(&mut file)?;
                         if file_hash != blob.hash {
                             eprintln!("{}: hash mismatch in tarball", input_path);
                             return Err(Sysexits::EX_DATAERR);

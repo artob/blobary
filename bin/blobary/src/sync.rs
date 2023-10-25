@@ -12,14 +12,13 @@ pub fn copy_blobs(
     let mutate_count: usize = 0;
 
     for blob in BlobIterator::new(source_store.deref_mut()) {
-        if options.verbose || options.debug {
-            println!("{}", encode_hash(blob.hash));
-        }
-
         let blob_data = blob.data.unwrap();
         let mut blob_data = blob_data.borrow_mut();
 
-        target_store.put(&mut blob_data.deref_mut())?;
+        let (created, _) = target_store.put(&mut blob_data.deref_mut())?;
+        if created && (options.verbose || options.debug) {
+            println!("{}", encode_hash(blob.hash));
+        }
     }
 
     Ok(mutate_count)

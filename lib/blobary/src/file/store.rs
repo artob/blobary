@@ -27,7 +27,7 @@ impl BlobStore for FileBlobStore {
         Err(BlobStoreError::Unimplemented("get_by_hash".to_string())) // TODO
     }
 
-    fn put(&mut self, _blob_data: &mut dyn Read) -> Result<Blob> {
+    fn put(&mut self, _blob_data: &mut dyn Read) -> Result<(bool, Blob)> {
         Err(BlobStoreError::Unimplemented("put".to_string())) // TODO
     }
 

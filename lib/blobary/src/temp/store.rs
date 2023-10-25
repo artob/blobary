@@ -51,7 +51,7 @@ impl BlobStore for EphemeralBlobStore {
         }
     }
 
-    fn put(&mut self, blob_data: &mut dyn Read) -> Result<Blob> {
+    fn put(&mut self, blob_data: &mut dyn Read) -> Result<(bool, Blob)> {
         let mut buffer = Vec::new();
         blob_data.read_to_end(&mut buffer)?;
         let blob_size = buffer.len() as u64;
@@ -60,7 +60,7 @@ impl BlobStore for EphemeralBlobStore {
         if let Some(blob_id) = self.index.get(&blob_hash) {
             return match self.get_by_id(*blob_id)? {
                 None => unreachable!("blob_id {} not found", blob_id),
-                Some(blob) => Ok(blob),
+                Some(blob) => Ok((false, blob)),
             };
         }
 
@@ -76,7 +76,7 @@ impl BlobStore for EphemeralBlobStore {
         self.store.push(blob.clone());
         self.index.insert(blob_hash, blob_id);
 
-        Ok(blob)
+        Ok((true, blob))
     }
 
     fn remove(&mut self, blob_hash: BlobHash) -> Result<bool> {
@@ -102,15 +102,15 @@ mod test {
         let mut store = EphemeralBlobStore::default();
         assert_eq!(store.count().unwrap(), 0);
 
-        let foo = store.put_string("Foo").unwrap();
+        let (_, foo) = store.put_string("Foo").unwrap();
         assert_eq!(store.count().unwrap(), 1);
         assert_eq!(foo.id, 1);
 
-        let foo2 = store.put_string("Foo").unwrap();
+        let (_, foo2) = store.put_string("Foo").unwrap();
         assert_eq!(store.count().unwrap(), 1);
         assert_eq!(foo2.id, 1);
 
-        let bar = store.put_string("Bar").unwrap();
+        let (_, bar) = store.put_string("Bar").unwrap();
         assert_eq!(store.count().unwrap(), 2);
         assert_eq!(bar.id, 2);
     }
