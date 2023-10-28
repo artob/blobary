@@ -23,7 +23,7 @@ pub fn open_store(writable: bool) -> Result<Box<dyn BlobStore>, Sysexits> {
 }
 
 fn open_store_in_cwd(writable: bool) -> Result<Box<dyn BlobStore>, Sysexits> {
-    match DirectoryBlobStore::open_cwd(BlobStoreOptions { writable }) {
+    match DirectoryBlobStore::open_in_cwd(BlobStoreOptions { writable }) {
         Ok(store) => Ok(Box::new(store)),
         Err(err) => {
             eprintln!("blobary: {}", err);

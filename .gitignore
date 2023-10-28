@@ -1,6 +1,9 @@
 # macOS
 .DS_Store
 
+# Blobary artifacts
+.blobary/
+
 # Environment variables
 .env
 

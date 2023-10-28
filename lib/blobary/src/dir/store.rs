@@ -20,17 +20,18 @@ use std::{
 };
 use zerocopy::{AsBytes, FromBytes};
 
-const INDEX_FILE_NAME: &str = ".blobary.index";
+const STORE_DIR_NAME: &str = ".blobary";
+const INDEX_FILE_NAME: &str = ".index";
 
 pub struct DirectoryBlobStore {
-    pub(crate) dir: Dir,
-    pub(crate) index_file: RefCell<Box<dyn File>>, // .blobary.index
+    pub(crate) dir: Dir, // .blobary
+    pub(crate) index_file: RefCell<Box<dyn File>>, // .blobary/index
     pub(crate) lookup_id: HashMap<BlobHash, BlobID>,
 }
 
 impl DirectoryBlobStore {
-    pub fn open_cwd(options: BlobStoreOptions) -> Result<Self> {
-        Self::open_path(".", options)
+    pub fn open_in_cwd(options: BlobStoreOptions) -> Result<Self> {
+        Self::open_path(STORE_DIR_NAME, options)
     }
 
     pub fn open_path(path: impl AsRef<Path>, options: BlobStoreOptions) -> Result<Self> {
@@ -40,8 +41,8 @@ impl DirectoryBlobStore {
         Self::open_dir(Dir::open_ambient_dir(path, ambient_authority())?, options)
     }
 
-    pub fn open_tempdir(dir: &TempDir, options: BlobStoreOptions) -> Result<Self> {
-        Self::open_dir(dir.open_dir(".")?, options)
+    pub fn open_tempdir(temp_dir: &TempDir, options: BlobStoreOptions) -> Result<Self> {
+        Self::open_dir(temp_dir.open_dir(".")?, options)
     }
 
     pub fn open_dir(dir: Dir, options: BlobStoreOptions) -> Result<Self> {
