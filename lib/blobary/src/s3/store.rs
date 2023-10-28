@@ -1,7 +1,8 @@
 // This is free and unencumbered software released into the public domain.
 
 use crate::{
-    hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreError, BlobStoreExt, BlobStoreOptions, Result,
+    hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreError, BlobStoreExt, BlobStoreOptions,
+    IndexedBlobStore, Result,
 };
 use s3::creds::Credentials;
 use std::{
@@ -39,14 +40,6 @@ impl BlobStore for S3BlobStore {
         Err(BlobStoreError::Unsupported)
     }
 
-    fn hash_to_id(&self, _blob_hash: BlobHash) -> Result<Option<BlobID>> {
-        Err(BlobStoreError::Unsupported)
-    }
-
-    fn id_to_hash(&self, _blob_id: BlobID) -> Result<Option<BlobHash>> {
-        Err(BlobStoreError::Unsupported)
-    }
-
     fn contains_hash(&self, blob_hash: BlobHash) -> Result<bool> {
         let blob_path = format!("{}/{}", self.prefix, blob_hash);
 
@@ -60,10 +53,6 @@ impl BlobStore for S3BlobStore {
                 }
             }
         }
-    }
-
-    fn get_by_id(&self, _blob_id: BlobID) -> Result<Option<Blob>> {
-        Err(BlobStoreError::Unsupported)
     }
 
     fn get_by_hash(&self, blob_hash: BlobHash) -> Result<Option<Blob>> {
@@ -121,6 +110,20 @@ impl BlobStore for S3BlobStore {
             Ok(_response) => Ok(true), // can't determine if it existed or not
             Err(err) => Err(err.into()),
         }
+    }
+}
+
+impl IndexedBlobStore for S3BlobStore {
+    fn hash_to_id(&self, _blob_hash: BlobHash) -> Result<Option<BlobID>> {
+        Err(BlobStoreError::Unsupported)
+    }
+
+    fn id_to_hash(&self, _blob_id: BlobID) -> Result<Option<BlobHash>> {
+        Err(BlobStoreError::Unsupported)
+    }
+
+    fn get_by_id(&self, _blob_id: BlobID) -> Result<Option<Blob>> {
+        Err(BlobStoreError::Unsupported)
     }
 }
 

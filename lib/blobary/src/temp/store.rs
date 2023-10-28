@@ -1,6 +1,9 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::{hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, BlobStoreOptions, Result};
+use crate::{
+    hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreExt, BlobStoreOptions, IndexedBlobStore,
+    Result,
+};
 use std::{
     cell::RefCell,
     collections::HashMap,
@@ -26,26 +29,8 @@ impl BlobStore for EphemeralBlobStore {
         Ok(self.store.len() as BlobID)
     }
 
-    fn hash_to_id(&self, blob_hash: BlobHash) -> Result<Option<BlobID>> {
-        Ok(self.index.get(&blob_hash).copied())
-    }
-
-    fn id_to_hash(&self, blob_id: BlobID) -> Result<Option<BlobHash>> {
-        Ok(match blob_id {
-            0 => None,
-            _ => self.store.get(blob_id - 1).map(|blob| blob.hash),
-        })
-    }
-
     fn contains_hash(&self, blob_hash: BlobHash) -> Result<bool> {
         Ok(self.index.contains_key(&blob_hash))
-    }
-
-    fn get_by_id(&self, blob_id: BlobID) -> Result<Option<Blob>> {
-        Ok(match blob_id {
-            0 => None,
-            _ => self.store.get(blob_id - 1).cloned(),
-        })
     }
 
     fn get_by_hash(&self, blob_hash: BlobHash) -> Result<Option<Blob>> {
@@ -92,6 +77,26 @@ impl BlobStore for EphemeralBlobStore {
                 Ok(true)
             }
         }
+    }
+}
+
+impl IndexedBlobStore for EphemeralBlobStore {
+    fn hash_to_id(&self, blob_hash: BlobHash) -> Result<Option<BlobID>> {
+        Ok(self.index.get(&blob_hash).copied())
+    }
+
+    fn id_to_hash(&self, blob_id: BlobID) -> Result<Option<BlobHash>> {
+        Ok(match blob_id {
+            0 => None,
+            _ => self.store.get(blob_id - 1).map(|blob| blob.hash),
+        })
+    }
+
+    fn get_by_id(&self, blob_id: BlobID) -> Result<Option<Blob>> {
+        Ok(match blob_id {
+            0 => None,
+            _ => self.store.get(blob_id - 1).cloned(),
+        })
     }
 }
 

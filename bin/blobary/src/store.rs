@@ -1,11 +1,11 @@
 // This is free and unencumbered software released into the public domain.
 
 use crate::sysexits::Sysexits;
-use blobary::{BlobStore, BlobStoreOptions, DirectoryBlobStore, EphemeralBlobStore};
+use blobary::{BlobStoreOptions, DirectoryBlobStore, EphemeralBlobStore, IndexedBlobStore};
 use std::env::VarError;
 use url::Url;
 
-pub fn open_store(writable: bool) -> Result<Box<dyn BlobStore>, Sysexits> {
+pub fn open_store(writable: bool) -> Result<Box<dyn IndexedBlobStore>, Sysexits> {
     match std::env::var("BLOBARY_URL") {
         Err(VarError::NotPresent) => open_store_in_cwd(writable),
         Err(VarError::NotUnicode(_)) => {
@@ -22,7 +22,7 @@ pub fn open_store(writable: bool) -> Result<Box<dyn BlobStore>, Sysexits> {
     }
 }
 
-fn open_store_in_cwd(writable: bool) -> Result<Box<dyn BlobStore>, Sysexits> {
+fn open_store_in_cwd(writable: bool) -> Result<Box<dyn IndexedBlobStore>, Sysexits> {
     match DirectoryBlobStore::open_in_cwd(BlobStoreOptions { writable }) {
         Ok(store) => Ok(Box::new(store)),
         Err(err) => {
@@ -35,7 +35,7 @@ fn open_store_in_cwd(writable: bool) -> Result<Box<dyn BlobStore>, Sysexits> {
 pub fn open_store_from_url(
     url: impl AsRef<str>,
     writable: bool,
-) -> Result<Box<dyn BlobStore>, Sysexits> {
+) -> Result<Box<dyn IndexedBlobStore>, Sysexits> {
     match Url::parse(url.as_ref()) {
         Err(err) => {
             eprintln!("blobary: BLOBARY_URL is invalid: {}", err);
@@ -58,7 +58,10 @@ pub fn open_store_from_url(
     }
 }
 
-fn open_store_from_file_url(url: Url, writable: bool) -> Result<Box<dyn BlobStore>, Sysexits> {
+fn open_store_from_file_url(
+    url: Url,
+    writable: bool,
+) -> Result<Box<dyn IndexedBlobStore>, Sysexits> {
     match url.to_file_path() {
         Err(_) => {
             eprintln!("blobary: BLOBARY_URL contains an invalid path: {}", url);
@@ -74,14 +77,20 @@ fn open_store_from_file_url(url: Url, writable: bool) -> Result<Box<dyn BlobStor
     }
 }
 
-fn open_store_from_memory_url(_url: Url, writable: bool) -> Result<Box<dyn BlobStore>, Sysexits> {
+fn open_store_from_memory_url(
+    _url: Url,
+    writable: bool,
+) -> Result<Box<dyn IndexedBlobStore>, Sysexits> {
     Ok(Box::new(EphemeralBlobStore::new(BlobStoreOptions {
         writable,
     })))
 }
 
 #[cfg(feature = "redis")]
-fn open_store_from_redis_url(url: Url, writable: bool) -> Result<Box<dyn BlobStore>, Sysexits> {
+fn open_store_from_redis_url(
+    url: Url,
+    writable: bool,
+) -> Result<Box<dyn IndexedBlobStore>, Sysexits> {
     match blobary::redis::RedisBlobStore::open(url, BlobStoreOptions { writable }) {
         Ok(store) => Ok(Box::new(store)),
         Err(err) => {
@@ -92,7 +101,7 @@ fn open_store_from_redis_url(url: Url, writable: bool) -> Result<Box<dyn BlobSto
 }
 
 #[cfg(feature = "s3")]
-fn open_store_from_s3_url(url: Url, writable: bool) -> Result<Box<dyn BlobStore>, Sysexits> {
+fn open_store_from_s3_url(url: Url, writable: bool) -> Result<Box<dyn IndexedBlobStore>, Sysexits> {
     let url_path = url.path();
     let bucket_name = url.host_str().unwrap();
     let bucket_prefix = match url_path.chars().last() {
@@ -111,6 +120,9 @@ fn open_store_from_s3_url(url: Url, writable: bool) -> Result<Box<dyn BlobStore>
 }
 
 #[cfg(feature = "sqlite")]
-fn open_store_from_sqlite_url(_url: Url, _writable: bool) -> Result<Box<dyn BlobStore>, Sysexits> {
+fn open_store_from_sqlite_url(
+    _url: Url,
+    _writable: bool,
+) -> Result<Box<dyn IndexedBlobStore>, Sysexits> {
     todo!("SQLite support not implemented yet") // TODO
 }

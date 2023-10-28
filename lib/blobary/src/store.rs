@@ -9,17 +9,8 @@ pub trait BlobStore {
     /// Returns the number of blobs in this store.
     fn count(&self) -> Result<usize>;
 
-    /// Converts a BLAKE3 hash to a store ID.
-    fn hash_to_id(&self, blob_hash: BlobHash) -> Result<Option<BlobID>>;
-
-    /// Converts a store ID to a BLAKE3 hash.
-    fn id_to_hash(&self, blob_id: BlobID) -> Result<Option<BlobHash>>;
-
     /// Determines if the store contains a blob with the given BLAKE3 hash.
     fn contains_hash(&self, blob_hash: BlobHash) -> Result<bool>;
-
-    /// Fetches a blob by its store ID.
-    fn get_by_id(&self, blob_id: BlobID) -> Result<Option<Blob>>;
 
     /// Fetches a blob by its BLAKE3 hash.
     fn get_by_hash(&self, blob_hash: BlobHash) -> Result<Option<Blob>>;
@@ -29,6 +20,17 @@ pub trait BlobStore {
 
     /// Removes a blob by its BLAKE3 hash.
     fn remove(&mut self, blob_hash: BlobHash) -> Result<bool>;
+}
+
+pub trait IndexedBlobStore: BlobStore {
+    /// Converts a BLAKE3 hash to a store ID.
+    fn hash_to_id(&self, blob_hash: BlobHash) -> Result<Option<BlobID>>;
+
+    /// Converts a store ID to a BLAKE3 hash.
+    fn id_to_hash(&self, blob_id: BlobID) -> Result<Option<BlobHash>>;
+
+    /// Fetches a blob by its store ID.
+    fn get_by_id(&self, blob_id: BlobID) -> Result<Option<Blob>>;
 }
 
 pub trait BlobStoreExt: BlobStore {
@@ -61,7 +63,9 @@ impl Default for BlobStoreOptions {
 
 impl BlobStoreExt for dyn BlobStore {}
 
-impl<'a> IntoIterator for &'a mut dyn BlobStore {
+impl BlobStoreExt for dyn IndexedBlobStore {}
+
+impl<'a> IntoIterator for &'a mut dyn IndexedBlobStore {
     type Item = Blob;
     type IntoIter = IndexedBlobStoreIterator<'a>;
 

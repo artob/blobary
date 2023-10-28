@@ -1,7 +1,8 @@
 // This is free and unencumbered software released into the public domain.
 
 use crate::{
-    hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreError, BlobStoreExt, BlobStoreOptions, Result,
+    hash, Blob, BlobHash, BlobID, BlobStore, BlobStoreError, BlobStoreExt, BlobStoreOptions,
+    IndexedBlobStore, Result,
 };
 use redis::Commands;
 use std::{cell::RefCell, io::Read, str::FromStr};
@@ -33,39 +34,8 @@ impl BlobStore for RedisBlobStore {
         Ok(conn.zcard(&self.index_key).unwrap_or(0))
     }
 
-    fn hash_to_id(&self, blob_hash: BlobHash) -> Result<Option<BlobID>> {
-        let mut conn = self.connection.borrow_mut();
-        let blob_hash_str = blob_hash.to_hex();
-        match conn.zscore::<&str, &str, Option<BlobID>>(&self.index_key, blob_hash_str.as_str()) {
-            Ok(Some(rank)) => Ok(Some(rank)),
-            Ok(None) => Ok(None),
-            Err(err) => Err(err.into()),
-        }
-    }
-
-    fn id_to_hash(&self, blob_id: BlobID) -> Result<Option<BlobHash>> {
-        let mut conn = self.connection.borrow_mut();
-        match conn.zrangebyscore::<&str, BlobID, BlobID, Vec<String>>(
-            &self.index_key,
-            blob_id,
-            blob_id,
-        ) {
-            Ok(mut results) if results.len() == 1 => {
-                let result = results.pop().unwrap();
-                let blob_hash = BlobHash::from_str(result.as_str()).expect("parse blob hash");
-                Ok(Some(blob_hash))
-            }
-            Ok(_) => unreachable!("ZRANGEBYSCORE should only return 1 result"),
-            Err(err) => Err(err.into()),
-        }
-    }
-
     fn contains_hash(&self, _blob_hash: BlobHash) -> Result<bool> {
         Err(BlobStoreError::Unimplemented("contains_hash".to_string())) // TODO
-    }
-
-    fn get_by_id(&self, _blob_id: BlobID) -> Result<Option<Blob>> {
-        Err(BlobStoreError::Unimplemented("get_by_id".to_string())) // TODO
     }
 
     fn get_by_hash(&self, _blob_hash: BlobHash) -> Result<Option<Blob>> {
@@ -128,6 +98,39 @@ impl BlobStore for RedisBlobStore {
                 }
             }
         }
+    }
+}
+
+impl IndexedBlobStore for RedisBlobStore {
+    fn hash_to_id(&self, blob_hash: BlobHash) -> Result<Option<BlobID>> {
+        let mut conn = self.connection.borrow_mut();
+        let blob_hash_str = blob_hash.to_hex();
+        match conn.zscore::<&str, &str, Option<BlobID>>(&self.index_key, blob_hash_str.as_str()) {
+            Ok(Some(rank)) => Ok(Some(rank)),
+            Ok(None) => Ok(None),
+            Err(err) => Err(err.into()),
+        }
+    }
+
+    fn id_to_hash(&self, blob_id: BlobID) -> Result<Option<BlobHash>> {
+        let mut conn = self.connection.borrow_mut();
+        match conn.zrangebyscore::<&str, BlobID, BlobID, Vec<String>>(
+            &self.index_key,
+            blob_id,
+            blob_id,
+        ) {
+            Ok(mut results) if results.len() == 1 => {
+                let result = results.pop().unwrap();
+                let blob_hash = BlobHash::from_str(result.as_str()).expect("parse blob hash");
+                Ok(Some(blob_hash))
+            }
+            Ok(_) => unreachable!("ZRANGEBYSCORE should only return 1 result"),
+            Err(err) => Err(err.into()),
+        }
+    }
+
+    fn get_by_id(&self, _blob_id: BlobID) -> Result<Option<Blob>> {
+        Err(BlobStoreError::Unimplemented("get_by_id".to_string())) // TODO
     }
 }
 

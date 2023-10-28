@@ -2,7 +2,7 @@
 
 use crate::{
     encode_into_path, Blob, BlobHash, BlobHasher, BlobID, BlobStore, BlobStoreError, BlobStoreExt,
-    BlobStoreOptions, File, PersistentBlobRecord, Result, RECORD_SIZE,
+    BlobStoreOptions, File, IndexedBlobStore, PersistentBlobRecord, Result, RECORD_SIZE,
 };
 use cap_std::{
     ambient_authority,
@@ -98,41 +98,8 @@ impl BlobStore for DirectoryBlobStore {
         Ok(self.index_file.borrow_mut().stream_len().unwrap() as BlobID / RECORD_SIZE as BlobID)
     }
 
-    fn hash_to_id(&self, blob_hash: BlobHash) -> Result<Option<BlobID>> {
-        Ok(self.lookup_id.get(&blob_hash).copied())
-    }
-
-    fn id_to_hash(&self, blob_id: BlobID) -> Result<Option<BlobHash>> {
-        Ok(self
-            .read_record(blob_id)?
-            .map(|blob_record| blob_record.0.into()))
-    }
-
     fn contains_hash(&self, blob_hash: BlobHash) -> Result<bool> {
         Ok(self.lookup_id.contains_key(&blob_hash))
-    }
-
-    fn get_by_id(&self, blob_id: BlobID) -> Result<Option<Blob>> {
-        match self.id_to_hash(blob_id)? {
-            None => Ok(None),
-            Some(blob_hash) => {
-                let blob_path = encode_into_path(blob_hash);
-                let mut blob_file = match self.dir.open(blob_path) {
-                    Ok(blob_file) => blob_file,
-                    Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-                        // The index entry remains, but the actual blob file has been removed:
-                        return Err(BlobStoreError::Removed.into());
-                    }
-                    Err(err) => return Err(err.into()),
-                };
-                Ok(Some(Blob {
-                    id: blob_id,
-                    hash: blob_hash,
-                    size: blob_file.stream_len()?,
-                    data: Some(Rc::new(RefCell::new(blob_file))),
-                }))
-            }
-        }
     }
 
     fn get_by_hash(&self, blob_hash: BlobHash) -> Result<Option<Blob>> {
@@ -213,6 +180,41 @@ impl BlobStore for DirectoryBlobStore {
                     Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(false),
                     Err(err) => Err(err.into()),
                 }
+            }
+        }
+    }
+}
+
+impl IndexedBlobStore for DirectoryBlobStore {
+    fn hash_to_id(&self, blob_hash: BlobHash) -> Result<Option<BlobID>> {
+        Ok(self.lookup_id.get(&blob_hash).copied())
+    }
+
+    fn id_to_hash(&self, blob_id: BlobID) -> Result<Option<BlobHash>> {
+        Ok(self
+            .read_record(blob_id)?
+            .map(|blob_record| blob_record.0.into()))
+    }
+
+    fn get_by_id(&self, blob_id: BlobID) -> Result<Option<Blob>> {
+        match self.id_to_hash(blob_id)? {
+            None => Ok(None),
+            Some(blob_hash) => {
+                let blob_path = encode_into_path(blob_hash);
+                let mut blob_file = match self.dir.open(blob_path) {
+                    Ok(blob_file) => blob_file,
+                    Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                        // The index entry remains, but the actual blob file has been removed:
+                        return Err(BlobStoreError::Removed.into());
+                    }
+                    Err(err) => return Err(err.into()),
+                };
+                Ok(Some(Blob {
+                    id: blob_id,
+                    hash: blob_hash,
+                    size: blob_file.stream_len()?,
+                    data: Some(Rc::new(RefCell::new(blob_file))),
+                }))
             }
         }
     }

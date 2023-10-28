@@ -1,16 +1,16 @@
 // This is proprietary and confidential source code not for distribution.
 
-use crate::{Blob, BlobStore, BlobStoreError};
+use crate::{Blob, BlobStoreError, IndexedBlobStore};
 use std::iter::Iterator;
 
 pub struct IndexedBlobStoreIterator<'a> {
-    pub(crate) store: &'a mut dyn BlobStore,
+    pub(crate) store: &'a mut dyn IndexedBlobStore,
     pub(crate) index: usize,
     pub(crate) count: usize,
 }
 
 impl<'a> IndexedBlobStoreIterator<'a> {
-    pub fn new(store: &'a mut dyn BlobStore) -> Self {
+    pub fn new(store: &'a mut dyn IndexedBlobStore) -> Self {
         let count = store.count().unwrap();
         Self {
             store,

@@ -1,12 +1,12 @@
 // This is free and unencumbered software released into the public domain.
 
 use crate::{hash::encode_hash, sysexits::Sysexits, Options};
-use blobary::{BlobStore, IndexedBlobStoreIterator};
+use blobary::{IndexedBlobStore, IndexedBlobStoreIterator};
 use std::ops::DerefMut;
 
 pub fn copy_blobs(
-    source_store: &mut Box<dyn BlobStore>,
-    target_store: &mut Box<dyn BlobStore>,
+    source_store: &mut Box<dyn IndexedBlobStore>,
+    target_store: &mut Box<dyn IndexedBlobStore>,
     options: &Options,
 ) -> Result<usize, Sysexits> {
     let mutate_count: usize = 0;
