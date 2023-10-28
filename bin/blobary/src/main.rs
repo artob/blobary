@@ -44,13 +44,17 @@ struct Options {
     #[clap(long, value_parser)]
     license: bool,
 
-    // Enable verbose output
+    /// Enable verbose output
     #[clap(short = 'v', long, value_parser, global = true)]
     verbose: bool,
 
     /// Print version information
     #[clap(short = 'V', long, value_parser)]
     version: bool,
+
+    /// Print version information
+    #[clap(short = 'r', long, value_parser)]
+    read_only: bool,
 
     #[command(subcommand)]
     command: Option<Commands>,
@@ -212,8 +216,8 @@ impl Commands {
         Ok(()) // TODO
     }
 
-    fn compact(_options: &Options) -> Result<(), Sysexits> {
-        let _store = open_store(true)?;
+    fn compact(options: &Options) -> Result<(), Sysexits> {
+        let _store = open_store(!options.read_only)?;
         Ok(()) // TODO
     }
 
@@ -234,7 +238,7 @@ impl Commands {
     }
 
     fn add(input_paths: &Vec<impl AsRef<Path>>, options: &Options) -> Result<(), Sysexits> {
-        let mut store = open_store(true)?;
+        let mut store = open_store(!options.read_only)?;
         let input_paths = list_inputs(input_paths)?;
         for input_path in input_paths {
             match store.put_file(input_path) {
@@ -253,7 +257,7 @@ impl Commands {
     }
 
     fn put(input_text: &String, options: &Options) -> Result<(), Sysexits> {
-        let mut store = open_store(true)?;
+        let mut store = open_store(!options.read_only)?;
         match store.put_string(input_text) {
             Err(err) => {
                 eprintln!("blobary: {}", err);
@@ -284,8 +288,8 @@ impl Commands {
         Ok(())
     }
 
-    fn remove(blob_hashes: &Vec<BlobHash>, _options: &Options) -> Result<(), Sysexits> {
-        let mut store = open_store(true)?;
+    fn remove(blob_hashes: &Vec<BlobHash>, options: &Options) -> Result<(), Sysexits> {
+        let mut store = open_store(!options.read_only)?;
         for blob_hash in blob_hashes {
             store.remove(*blob_hash)?;
         }
@@ -294,27 +298,27 @@ impl Commands {
 
     fn pull(remote_url: &Url, options: &Options) -> Result<(), Sysexits> {
         let mut source_store = open_store_from_url(remote_url, false)?;
-        let mut target_store = open_store(true)?;
+        let mut target_store = open_store(!options.read_only)?;
         copy_blobs(&mut source_store, &mut target_store, options).map(|_| ())
     }
 
     fn push(remote_url: &Url, options: &Options) -> Result<(), Sysexits> {
         let mut source_store = open_store(false)?;
-        let mut target_store = open_store_from_url(remote_url, true)?;
+        let mut target_store = open_store_from_url(remote_url, !options.read_only)?;
         copy_blobs(&mut source_store, &mut target_store, options).map(|_| ())
     }
 
     fn sync(remote_url: &Url, options: &Options) -> Result<(), Sysexits> {
         // We download before uploading to minimize remote iteration overhead.
-        let mut source_store = open_store_from_url(remote_url, true)?;
-        let mut target_store = open_store(true)?;
+        let mut source_store = open_store_from_url(remote_url, !options.read_only)?;
+        let mut target_store = open_store(!options.read_only)?;
         copy_blobs(&mut source_store, &mut target_store, options)
             .and_then(|_| copy_blobs(&mut target_store, &mut source_store, options))
             .map(|_| ())
     }
 
-    fn import(input_paths: &Vec<impl AsRef<Path>>, _options: &Options) -> Result<(), Sysexits> {
-        let mut store = open_store(true)?;
+    fn import(input_paths: &Vec<impl AsRef<Path>>, options: &Options) -> Result<(), Sysexits> {
+        let mut store = open_store(!options.read_only)?;
         let inputs = open_inputs(input_paths)?;
         for (input_path, input) in inputs {
             let mut tarball = tar::Archive::new(input);
