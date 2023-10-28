@@ -74,7 +74,8 @@ impl BlobStore for S3BlobStore {
             Ok(response) => {
                 match response.status_code() {
                     404 => Ok(None), // not found
-                    200 => { // found
+                    200 => {
+                        // found
                         let blob_data = response.bytes().to_vec();
                         let blob_size = blob_data.len();
                         let blob_data = Cursor::new(blob_data);

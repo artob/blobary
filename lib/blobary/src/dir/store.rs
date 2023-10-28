@@ -1,7 +1,7 @@
 // This is free and unencumbered software released into the public domain.
 
 use crate::{
-    encode_into_path, Blob, BlobHash, BlobHasher, BlobID, BlobStore, BlobStoreExt,
+    encode_into_path, Blob, BlobHash, BlobHasher, BlobID, BlobStore, BlobStoreError, BlobStoreExt,
     BlobStoreOptions, File, PersistentBlobRecord, Result, RECORD_SIZE,
 };
 use cap_std::{
@@ -24,7 +24,7 @@ const STORE_DIR_NAME: &str = ".blobary";
 const INDEX_FILE_NAME: &str = ".index";
 
 pub struct DirectoryBlobStore {
-    pub(crate) dir: Dir, // .blobary
+    pub(crate) dir: Dir,                           // .blobary
     pub(crate) index_file: RefCell<Box<dyn File>>, // .blobary/index
     pub(crate) lookup_id: HashMap<BlobHash, BlobID>,
 }
@@ -115,7 +115,23 @@ impl BlobStore for DirectoryBlobStore {
     fn get_by_id(&self, blob_id: BlobID) -> Result<Option<Blob>> {
         match self.id_to_hash(blob_id)? {
             None => Ok(None),
-            Some(blob_hash) => self.get_by_hash(blob_hash),
+            Some(blob_hash) => {
+                let blob_path = encode_into_path(blob_hash);
+                let mut blob_file = match self.dir.open(blob_path) {
+                    Ok(blob_file) => blob_file,
+                    Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                        // The index entry remains, but the actual blob file has been removed:
+                        return Err(BlobStoreError::Removed.into());
+                    }
+                    Err(err) => return Err(err.into()),
+                };
+                Ok(Some(Blob {
+                    id: blob_id,
+                    hash: blob_hash,
+                    size: blob_file.stream_len()?,
+                    data: Some(Rc::new(RefCell::new(blob_file))),
+                }))
+            }
         }
     }
 

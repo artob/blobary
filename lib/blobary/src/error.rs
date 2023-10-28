@@ -20,6 +20,8 @@ pub enum BlobStoreError {
     Unimplemented(String),
     #[error("unexpected error")]
     Unexpected,
+    #[error("blob was removed")]
+    Removed,
     #[error(transparent)]
     IO(#[from] std::io::Error),
     #[error(transparent)]

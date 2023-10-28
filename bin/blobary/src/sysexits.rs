@@ -69,6 +69,7 @@ impl From<BlobStoreError> for Sysexits {
             Unsupported => Sysexits::EX_SOFTWARE,
             Unimplemented(_) => Sysexits::EX_SOFTWARE,
             Unexpected => Sysexits::EX_TEMPFAIL,
+            Removed => Sysexits::EX_DATAERR,
             IO(err) => err.into(),
             Other(err) => err.into(),
         }

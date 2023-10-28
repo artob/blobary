@@ -15,7 +15,7 @@ use crate::{
     store::{open_store, open_store_from_url},
     sysexits::{exit, Sysexits},
 };
-use blobary::{BlobHash, BlobHasher, BlobIterator, BlobStoreExt, DEFAULT_MIME_TYPE};
+use blobary::{BlobHash, BlobHasher, BlobStoreExt, IndexedBlobStoreIterator, DEFAULT_MIME_TYPE};
 use clap::{Parser, Subcommand};
 use dotenvy::dotenv;
 use shadow_rs::shadow;
@@ -223,7 +223,7 @@ impl Commands {
 
     fn list(options: &Options) -> Result<(), Sysexits> {
         let mut store = open_store(false)?;
-        for blob in BlobIterator::new(store.deref_mut()) {
+        for blob in IndexedBlobStoreIterator::new(store.deref_mut()) {
             let blob_hash = encode_hash(blob.hash);
             if options.verbose || options.debug {
                 let blob_data = blob.data.unwrap();
@@ -350,7 +350,7 @@ impl Commands {
             .unwrap()
             .as_secs();
         let mut tarball = tar::Builder::new(output);
-        for blob in BlobIterator::new(store.deref_mut()) {
+        for blob in IndexedBlobStoreIterator::new(store.deref_mut()) {
             let blob_data = blob.data.unwrap();
             let mut blob_data = blob_data.borrow_mut();
             let mut file_head = Header::new_ustar();

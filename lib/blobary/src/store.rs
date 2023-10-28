@@ -1,6 +1,6 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::{Blob, BlobHash, BlobID, BlobIterator, BlobStoreError};
+use crate::{Blob, BlobHash, BlobID, BlobStoreError, IndexedBlobStoreIterator};
 use std::{io::Read, path::Path};
 
 pub type Result<T> = std::result::Result<T, BlobStoreError>;
@@ -63,9 +63,9 @@ impl BlobStoreExt for dyn BlobStore {}
 
 impl<'a> IntoIterator for &'a mut dyn BlobStore {
     type Item = Blob;
-    type IntoIter = BlobIterator<'a>;
+    type IntoIter = IndexedBlobStoreIterator<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
-        BlobIterator::new(self)
+        IndexedBlobStoreIterator::new(self)
     }
 }
