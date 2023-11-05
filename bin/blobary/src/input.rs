@@ -6,6 +6,13 @@ use std::{
     path::Path,
 };
 
+use bytesize::ByteSize;
+
+pub fn parse_bytesize(input: &str) -> std::io::Result<usize> {
+    let input = input.parse::<ByteSize>().unwrap().as_u64();
+    Ok(input as _)
+}
+
 pub fn list_inputs(input_paths: &Vec<impl AsRef<Path>>) -> Result<Vec<String>> {
     if input_paths.is_empty() {
         Ok(vec![String::from("/dev/stdin")])

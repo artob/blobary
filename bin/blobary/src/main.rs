@@ -10,17 +10,19 @@ mod sysexits;
 
 use crate::{
     hash::{encode_hash, parse_hash},
-    input::{list_inputs, open_inputs},
+    input::{list_inputs, open_inputs, parse_bytesize},
     output::open_output,
     store::{open_store, open_store_from_url},
     sysexits::{exit, Sysexits},
 };
-use blobary::{BlobHash, BlobHasher, BlobStoreExt, IndexedBlobStoreIterator, DEFAULT_MIME_TYPE};
+use blobary::{
+    Blob, BlobHash, BlobHasher, BlobStoreExt, IndexedBlobStoreIterator, DEFAULT_MIME_TYPE,
+};
 use clap::{Parser, Subcommand};
 use dotenvy::dotenv;
 use shadow_rs::shadow;
 use std::{
-    io::stdout,
+    io::{stdout, Read, Seek},
     ops::DerefMut,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
@@ -77,7 +79,14 @@ enum Commands {
     #[clap(alias = "ls")]
     List {},
     /// Add a file to the repository
-    Add { paths: Vec<PathBuf> },
+    Add {
+        /// The input file(s) to add
+        paths: Vec<PathBuf>,
+
+        /// Split input into chunks of the given size
+        #[clap(short = 'C', long, value_name = "SIZE", value_parser = parse_bytesize)]
+        chunk: Option<usize>,
+    },
     /// Put text into the repository
     Put { text: String },
     /// Fetch a blob by its hash
@@ -144,7 +153,10 @@ pub fn main() {
         Commands::Check {} => Commands::check(&options),
         Commands::Compact {} => Commands::compact(&options),
         Commands::List {} => Commands::list(&options),
-        Commands::Add { paths } => Commands::add(paths, &options),
+        Commands::Add { paths, chunk } => match chunk {
+            None => Commands::add(paths, &options),
+            Some(chunk_size) => Commands::add_chunked(paths, chunk_size, &options),
+        },
         Commands::Put { text } => Commands::put(text, &options),
         Commands::Get { ids } => Commands::get(ids, &options),
         Commands::Remove { ids } => Commands::remove(ids, &options),
@@ -253,6 +265,60 @@ impl Commands {
                 }
             }
         }
+        Ok(())
+    }
+
+    fn add_chunked(
+        input_paths: &Vec<impl AsRef<Path>>,
+        chunk_size: &usize,
+        options: &Options,
+    ) -> Result<(), Sysexits> {
+        let mut store = open_store(!options.read_only)?;
+        let input_paths = list_inputs(input_paths)?;
+
+        let mut chunks = Vec::<Blob>::new();
+        let mut buffer = Vec::<u8>::with_capacity(*chunk_size);
+        buffer.resize(*chunk_size, 0);
+
+        for input_path in input_paths {
+            let input_file = &mut std::fs::File::open(input_path)?;
+            loop {
+                match input_file.read_exact(&mut buffer[..]) {
+                    Ok(_) => {
+                        let (_, blob) = store.put_bytes(&mut buffer[..])?;
+                        if options.verbose || options.debug {
+                            println!("{}", encode_hash(blob.hash));
+                        }
+                        assert_eq!(blob.size, *chunk_size as u64);
+                        chunks.push(blob);
+                    }
+                    Err(err) if err.kind() == std::io::ErrorKind::UnexpectedEof => {
+                        let input_offset = input_file.seek(std::io::SeekFrom::Current(0))?;
+                        let chunk_size = input_offset as usize % buffer.len();
+                        if chunk_size != 0 {
+                            let (_, blob) = store.put_bytes(&buffer[0..chunk_size])?;
+                            if options.verbose || options.debug {
+                                println!("{}", encode_hash(blob.hash));
+                            }
+                            assert_eq!(blob.size, chunk_size as u64);
+                            chunks.push(blob);
+                        }
+                        break;
+                    }
+                    Err(err) => {
+                        eprintln!("blobary: {}", err);
+                        return Err(Sysexits::EX_IOERR);
+                    }
+                }
+            }
+        }
+
+        // if options.verbose || options.debug {
+        //     for chunk in chunks {
+        //         println!("{}", encode_hash(chunk.hash));
+        //     }
+        // }
+
         Ok(())
     }
 

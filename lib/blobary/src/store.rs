@@ -40,6 +40,11 @@ pub trait BlobStoreExt: BlobStore {
     }
 
     /// Stores a blob and returns its store ID.
+    fn put_bytes(&mut self, data: impl AsRef<[u8]>) -> Result<(bool, Blob)> {
+        self.put(&mut data.as_ref())
+    }
+
+    /// Stores a blob and returns its store ID.
     fn put_string(&mut self, data: impl AsRef<str>) -> Result<(bool, Blob)> {
         self.put(&mut data.as_ref().as_bytes())
     }
