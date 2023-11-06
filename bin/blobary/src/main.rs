@@ -18,12 +18,13 @@ use crate::{
 use blobary::{
     Blob, BlobHash, BlobHasher, BlobStoreExt, IndexedBlobStoreIterator, DEFAULT_MIME_TYPE,
 };
+use cap_tempfile::{ambient_authority, TempDir, TempFile};
 use clap::{Parser, Subcommand};
 use dotenvy::dotenv;
 use shadow_rs::shadow;
 use std::{
     io::{stdout, Read, Seek},
-    ops::DerefMut,
+    ops::{Deref, DerefMut},
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -86,6 +87,10 @@ enum Commands {
         /// Split input into chunks of the given size
         #[clap(short = 'C', long, value_name = "SIZE", value_parser = parse_bytesize)]
         chunk: Option<usize>,
+
+        /// Concatenate input files into a single blob
+        #[clap(long, conflicts_with = "chunk")]
+        concat: bool,
     },
     /// Put text into the repository
     Put { text: String },
@@ -153,9 +158,14 @@ pub fn main() {
         Commands::Check {} => Commands::check(&options),
         Commands::Compact {} => Commands::compact(&options),
         Commands::List {} => Commands::list(&options),
-        Commands::Add { paths, chunk } => match chunk {
-            None => Commands::add(paths, &options),
-            Some(chunk_size) => Commands::add_chunked(paths, chunk_size, &options),
+        Commands::Add {
+            paths,
+            chunk,
+            concat,
+        } => match (concat, chunk) {
+            (true, _) => Commands::add_concat(paths, &options),
+            (false, None) => Commands::add(paths, &options),
+            (false, Some(chunk_size)) => Commands::add_chunked(paths, chunk_size, &options),
         },
         Commands::Put { text } => Commands::put(text, &options),
         Commands::Get { ids } => Commands::get(ids, &options),
@@ -277,8 +287,7 @@ impl Commands {
         let input_paths = list_inputs(input_paths)?;
 
         let mut chunks = Vec::<Blob>::new();
-        let mut buffer = Vec::<u8>::with_capacity(*chunk_size);
-        buffer.resize(*chunk_size, 0);
+        let mut buffer = vec![0u8; *chunk_size];
 
         for input_path in input_paths {
             let input_file = &mut std::fs::File::open(input_path)?;
@@ -293,7 +302,7 @@ impl Commands {
                         chunks.push(blob);
                     }
                     Err(err) if err.kind() == std::io::ErrorKind::UnexpectedEof => {
-                        let input_offset = input_file.seek(std::io::SeekFrom::Current(0))?;
+                        let input_offset = input_file.stream_position()?;
                         let chunk_size = input_offset as usize % buffer.len();
                         if chunk_size != 0 {
                             let (_, blob) = store.put_bytes(&buffer[0..chunk_size])?;
@@ -313,13 +322,34 @@ impl Commands {
             }
         }
 
-        // if options.verbose || options.debug {
-        //     for chunk in chunks {
-        //         println!("{}", encode_hash(chunk.hash));
-        //     }
-        // }
-
         Ok(())
+    }
+
+    fn add_concat(input_paths: &Vec<impl AsRef<Path>>, options: &Options) -> Result<(), Sysexits> {
+        let mut store = open_store(!options.read_only)?;
+        let input_paths = list_inputs(input_paths)?;
+
+        let temp_dir = TempDir::new(ambient_authority())?;
+        let mut buffer_file = TempFile::new(temp_dir.deref())?;
+
+        for input_path in input_paths {
+            let input_file = &mut std::fs::File::open(input_path)?;
+            std::io::copy(input_file, &mut buffer_file)?;
+        }
+
+        buffer_file.rewind()?;
+        match store.put(&mut buffer_file) {
+            Err(err) => {
+                eprintln!("blobary: {}", err);
+                Err(Sysexits::EX_IOERR)
+            }
+            Ok((_created, blob)) => {
+                if options.verbose || options.debug {
+                    println!("{}", encode_hash(blob.hash));
+                }
+                Ok(())
+            }
+        }
     }
 
     fn put(input_text: &String, options: &Options) -> Result<(), Sysexits> {

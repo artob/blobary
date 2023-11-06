@@ -205,7 +205,7 @@ impl IndexedBlobStore for DirectoryBlobStore {
                     Ok(blob_file) => blob_file,
                     Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
                         // The index entry remains, but the actual blob file has been removed:
-                        return Err(BlobStoreError::Removed.into());
+                        return Err(BlobStoreError::Removed);
                     }
                     Err(err) => return Err(err.into()),
                 };

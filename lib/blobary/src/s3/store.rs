@@ -49,7 +49,7 @@ impl BlobStore for S3BlobStore {
                 match status_code {
                     404 => Ok(false), // not found
                     200 => Ok(true),  // found
-                    _ => Err(BlobStoreError::Unexpected.into()),
+                    _ => Err(BlobStoreError::Unexpected),
                 }
             }
         }
@@ -76,7 +76,7 @@ impl BlobStore for S3BlobStore {
                             data: Some(blob_data),
                         }))
                     }
-                    _ => Err(BlobStoreError::Unexpected.into()),
+                    _ => Err(BlobStoreError::Unexpected),
                 }
             }
         }
