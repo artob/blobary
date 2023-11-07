@@ -188,8 +188,7 @@ fn version() -> Result<(), Sysexits> {
 }
 
 fn license() -> Result<(), Sysexits> {
-    let license = include_str!("../../../UNLICENSE");
-    println!("{}", license.trim_end());
+    println!("This is free and unencumbered software released into the public domain.");
     Ok(())
 }
 
