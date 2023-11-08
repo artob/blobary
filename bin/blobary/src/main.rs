@@ -139,7 +139,7 @@ pub fn main() {
     let options = Options::parse_from(args);
 
     if options.version {
-        exit(version().err().unwrap_or_default());
+        exit(version(&options).err().unwrap_or_default());
     }
 
     if options.license {
@@ -180,10 +180,23 @@ pub fn main() {
     exit(result.err().unwrap_or_default());
 }
 
-fn version() -> Result<(), Sysexits> {
+fn version(options: &Options) -> Result<(), Sysexits> {
     let (date, _) = build::BUILD_TIME_3339.split_once('T').unwrap();
-    let version_string = format!("{} ({} {})", build::PKG_VERSION, date, build::SHORT_COMMIT,);
-    println!("Blobary {}", version_string);
+    let version_detail = if build::SHORT_COMMIT.is_empty() {
+        format!("{}", date)
+    } else {
+        format!("{} {}", date, build::SHORT_COMMIT)
+    };
+    println!("{} {} ({})", "Blobary", build::PKG_VERSION, version_detail);
+    if options.debug {
+        println!(
+            "Built with {} for {} from branch {} at {}",
+            build::RUST_VERSION,
+            build::BUILD_TARGET,
+            build::BRANCH,
+            build::BUILD_TIME
+        );
+    }
     Ok(())
 }
 
