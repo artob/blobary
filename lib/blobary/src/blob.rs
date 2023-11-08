@@ -3,7 +3,7 @@
 use crate::{error::BlobHashError, BlobHasher};
 use std::{
     cell::RefCell,
-    io::{Cursor, Read, Result, Seek, Write},
+    io::{Cursor, Read, Result, Seek, SeekFrom, Write},
     rc::Rc,
 };
 
@@ -119,7 +119,12 @@ pub struct Blob {
 pub trait BlobData: Seek + Read {
     /// Returns the blob's byte size.
     fn size(&mut self) -> Result<u64> {
-        self.stream_len()
+        let old_pos = self.seek(SeekFrom::Current(0))?;
+        let len = self.seek(SeekFrom::End(0))?;
+        if old_pos != len {
+            self.seek(SeekFrom::Start(old_pos))?;
+        }
+        Ok(len)
     }
 
     /// Guesses the MIME content type of the blob.

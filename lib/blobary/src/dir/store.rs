@@ -13,7 +13,7 @@ use std::{
     cell::RefCell,
     collections::HashMap,
     fs::create_dir_all,
-    io::{ErrorKind::UnexpectedEof, Read, Seek, Write},
+    io::{ErrorKind::UnexpectedEof, Read, Seek, SeekFrom, Write},
     os::unix::prelude::PermissionsExt,
     path::Path,
     rc::Rc,
@@ -94,8 +94,8 @@ impl DirectoryBlobStore {
 
 impl BlobStore for DirectoryBlobStore {
     fn count(&self) -> Result<BlobID> {
-        // TODO: remove the dependence on #![feature(seek_stream_len)]
-        Ok(self.index_file.borrow_mut().stream_len().unwrap() as BlobID / RECORD_SIZE as BlobID)
+        let mut stream = self.index_file.borrow_mut();
+        Ok(stream_len(stream.as_mut()).unwrap() as BlobID / RECORD_SIZE as BlobID)
     }
 
     fn contains_hash(&self, blob_hash: BlobHash) -> Result<bool> {
@@ -111,7 +111,7 @@ impl BlobStore for DirectoryBlobStore {
                 Ok(Some(Blob {
                     id: *blob_id,
                     hash: blob_hash,
-                    size: blob_file.stream_len()?,
+                    size: stream_len(&mut blob_file)?,
                     data: Some(Rc::new(RefCell::new(blob_file))),
                 }))
             }
@@ -212,7 +212,7 @@ impl IndexedBlobStore for DirectoryBlobStore {
                 Ok(Some(Blob {
                     id: blob_id,
                     hash: blob_hash,
-                    size: blob_file.stream_len()?,
+                    size: stream_len(&mut blob_file)?,
                     data: Some(Rc::new(RefCell::new(blob_file))),
                 }))
             }
@@ -248,4 +248,13 @@ mod test {
         // eprintln!("{}", std::env::temp_dir().to_str().unwrap());
         // std::process::exit(0); // leave `temp_dir`` around for inspection
     }
+}
+
+fn stream_len<T: Seek + ?Sized>(stream: &mut T) -> Result<u64> {
+    let old_pos = stream.seek(SeekFrom::Current(0))?;
+    let len = stream.seek(SeekFrom::End(0))?;
+    if old_pos != len {
+        stream.seek(SeekFrom::Start(old_pos))?;
+    }
+    Ok(len)
 }

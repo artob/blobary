@@ -38,7 +38,7 @@ shadow!(build);
 #[derive(Parser, Debug)]
 #[command(name = "Blobary", about)]
 #[command(arg_required_else_help = true)]
-struct Options {
+pub struct Options {
     /// Enable debugging output
     #[clap(short = 'd', long, value_parser, global = true)]
     debug: bool,
