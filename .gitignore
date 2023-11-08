@@ -17,8 +17,9 @@
 *~
 
 # Rust artifacts
-/target
 /Cargo.lock
+/rust-toolchain
+/target
 
 # Build outputs
 /blobary
