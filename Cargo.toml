@@ -1,3 +1,5 @@
+# See: https://doc.rust-lang.org/cargo/reference/manifest.html
+
 [workspace]
 members = ["bin/*", "lib/*"]
 default-members = ["bin/blobary", "lib/blobary"]
