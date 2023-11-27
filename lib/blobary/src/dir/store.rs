@@ -250,6 +250,7 @@ mod test {
     }
 }
 
+#[allow(clippy::seek_from_current)]
 fn stream_len<T: Seek + ?Sized>(stream: &mut T) -> Result<u64> {
     let old_pos = stream.seek(SeekFrom::Current(0))?;
     let len = stream.seek(SeekFrom::End(0))?;

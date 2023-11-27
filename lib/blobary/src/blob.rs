@@ -118,6 +118,7 @@ pub struct Blob {
 /// A blob is a unique byte sequence of data.
 pub trait BlobData: Seek + Read {
     /// Returns the blob's byte size.
+    #[allow(clippy::seek_from_current)]
     fn size(&mut self) -> Result<u64> {
         let old_pos = self.seek(SeekFrom::Current(0))?;
         let len = self.seek(SeekFrom::End(0))?;

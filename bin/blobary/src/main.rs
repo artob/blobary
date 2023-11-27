@@ -183,11 +183,11 @@ pub fn main() {
 fn version(options: &Options) -> Result<(), Sysexits> {
     let (date, _) = build::BUILD_TIME_3339.split_once('T').unwrap();
     let version_detail = if build::SHORT_COMMIT.is_empty() {
-        format!("{}", date)
+        date.to_string()
     } else {
         format!("{} {}", date, build::SHORT_COMMIT)
     };
-    println!("{} {} ({})", "Blobary", build::PKG_VERSION, version_detail);
+    println!("Blobary {} ({})", build::PKG_VERSION, version_detail);
     if options.debug {
         println!(
             "Built with {} for {} from branch {} at {}",
