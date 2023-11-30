@@ -1,6 +1,6 @@
 // This is free and unencumbered software released into the public domain.
 
-use crate::{Blob, BlobHash, BlobID, BlobStoreError, IndexedBlobStoreIterator};
+use crate::{Blob, BlobHash, BlobID, BlobStoreError, Filter, IndexedBlobStoreIterator};
 use std::{io::Read, path::Path};
 
 pub type Result<T> = std::result::Result<T, BlobStoreError>;
@@ -55,14 +55,39 @@ pub trait BlobStoreExt: BlobStore {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct BlobStoreOptions {
     pub writable: bool,
+    pub filters: Vec<Box<dyn Filter>>,
 }
 
 impl Default for BlobStoreOptions {
     fn default() -> Self {
-        Self { writable: true }
+        Self {
+            writable: true,
+            filters: vec![],
+        }
+    }
+}
+
+impl BlobStoreOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn writable(mut self, writable: bool) -> Self {
+        self.writable = writable;
+        self
+    }
+
+    pub fn filters(mut self, filters: Vec<Box<dyn Filter>>) -> Self {
+        self.filters = filters;
+        self
+    }
+
+    pub fn filter(mut self, filter: Box<dyn Filter>) -> Self {
+        self.filters.push(filter);
+        self
     }
 }
 

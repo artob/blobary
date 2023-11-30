@@ -23,7 +23,10 @@ pub fn open_store(writable: bool) -> Result<Box<dyn IndexedBlobStore>, Sysexits>
 }
 
 fn open_store_in_cwd(writable: bool) -> Result<Box<dyn IndexedBlobStore>, Sysexits> {
-    match DirectoryBlobStore::open_in_cwd(BlobStoreOptions { writable }) {
+    match DirectoryBlobStore::open_in_cwd(BlobStoreOptions {
+        writable,
+        filters: vec![],
+    }) {
         Ok(store) => Ok(Box::new(store)),
         Err(err) => {
             eprintln!("blobary: {}", err);
@@ -67,7 +70,13 @@ fn open_store_from_file_url(
             eprintln!("blobary: BLOBARY_URL contains an invalid path: {}", url);
             Err(Sysexits::EX_DATAERR)
         }
-        Ok(path) => match DirectoryBlobStore::open_path(path, BlobStoreOptions { writable }) {
+        Ok(path) => match DirectoryBlobStore::open_path(
+            path,
+            BlobStoreOptions {
+                writable,
+                filters: vec![],
+            },
+        ) {
             Ok(store) => Ok(Box::new(store)),
             Err(err) => {
                 eprintln!("blobary: {}", err);
@@ -83,6 +92,7 @@ fn open_store_from_memory_url(
 ) -> Result<Box<dyn IndexedBlobStore>, Sysexits> {
     Ok(Box::new(EphemeralBlobStore::new(BlobStoreOptions {
         writable,
+        filters: vec![],
     })))
 }
 
@@ -91,7 +101,13 @@ fn open_store_from_redis_url(
     url: Url,
     writable: bool,
 ) -> Result<Box<dyn IndexedBlobStore>, Sysexits> {
-    match blobary::redis::RedisBlobStore::open(url, BlobStoreOptions { writable }) {
+    match blobary::redis::RedisBlobStore::open(
+        url,
+        BlobStoreOptions {
+            writable,
+            filters: vec![],
+        },
+    ) {
         Ok(store) => Ok(Box::new(store)),
         Err(err) => {
             eprintln!("blobary: {}", err);
@@ -109,8 +125,14 @@ fn open_store_from_s3_url(url: Url, writable: bool) -> Result<Box<dyn IndexedBlo
         Some('/') => &url_path[..url_path.len() - 1],
         _ => url_path,
     };
-    match blobary::s3::S3BlobStore::open(bucket_name, bucket_prefix, BlobStoreOptions { writable })
-    {
+    match blobary::s3::S3BlobStore::open(
+        bucket_name,
+        bucket_prefix,
+        BlobStoreOptions {
+            writable,
+            filters: vec![],
+        },
+    ) {
         Ok(store) => Ok(Box::new(store)),
         Err(err) => {
             eprintln!("blobary: {}", err);
