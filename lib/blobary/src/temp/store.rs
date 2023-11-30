@@ -13,14 +13,18 @@ use std::{
 
 #[derive(Default)]
 pub struct EphemeralBlobStore {
+    pub(crate) config: BlobStoreOptions,
     index: HashMap<BlobHash, BlobID>,
     store: Vec<Blob>,
 }
 
 impl EphemeralBlobStore {
     #[allow(unused)]
-    pub fn new(_options: BlobStoreOptions) -> Self {
-        Self::default()
+    pub fn new(config: BlobStoreOptions) -> Self {
+        Self {
+            config,
+            ..Default::default()
+        }
     }
 }
 
@@ -41,6 +45,10 @@ impl BlobStore for EphemeralBlobStore {
     }
 
     fn put(&mut self, blob_data: &mut dyn Read) -> Result<(bool, Blob)> {
+        if !self.config.writable {
+            return Err(crate::BlobStoreError::NotWritable.into());
+        }
+
         let mut buffer = Vec::new();
         blob_data.read_to_end(&mut buffer)?;
         let blob_size = buffer.len() as u64;
@@ -69,6 +77,10 @@ impl BlobStore for EphemeralBlobStore {
     }
 
     fn remove(&mut self, blob_hash: BlobHash) -> Result<bool> {
+        if !self.config.writable {
+            return Err(crate::BlobStoreError::NotWritable.into());
+        }
+
         match self.hash_to_id(blob_hash)? {
             None => Ok(false), // not found
             Some(blob_id) => {

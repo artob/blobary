@@ -24,31 +24,32 @@ const STORE_DIR_NAME: &str = ".blobary";
 const INDEX_FILE_NAME: &str = ".index";
 
 pub struct DirectoryBlobStore {
-    pub(crate) dir: Dir,                           // .blobary
-    pub(crate) index_file: RefCell<Box<dyn File>>, // .blobary/index
-    pub(crate) lookup_id: HashMap<BlobHash, BlobID>,
+    pub(crate) config: BlobStoreOptions,
+    dir: Dir,                           // .blobary
+    index_file: RefCell<Box<dyn File>>, // .blobary/index
+    lookup_id: HashMap<BlobHash, BlobID>,
 }
 
 impl DirectoryBlobStore {
-    pub fn open_in_cwd(options: BlobStoreOptions) -> Result<Self> {
-        Self::open_path(STORE_DIR_NAME, options)
+    pub fn open_in_cwd(config: BlobStoreOptions) -> Result<Self> {
+        Self::open_path(STORE_DIR_NAME, config)
     }
 
-    pub fn open_path(path: impl AsRef<Path>, options: BlobStoreOptions) -> Result<Self> {
-        if options.writable {
+    pub fn open_path(path: impl AsRef<Path>, config: BlobStoreOptions) -> Result<Self> {
+        if config.writable {
             create_dir_all(path.as_ref())?;
         }
-        Self::open_dir(Dir::open_ambient_dir(path, ambient_authority())?, options)
+        Self::open_dir(Dir::open_ambient_dir(path, ambient_authority())?, config)
     }
 
-    pub fn open_tempdir(temp_dir: &TempDir, options: BlobStoreOptions) -> Result<Self> {
-        Self::open_dir(temp_dir.open_dir(".")?, options)
+    pub fn open_tempdir(temp_dir: &TempDir, config: BlobStoreOptions) -> Result<Self> {
+        Self::open_dir(temp_dir.open_dir(".")?, config)
     }
 
-    pub fn open_dir(dir: Dir, options: BlobStoreOptions) -> Result<Self> {
+    pub fn open_dir(dir: Dir, config: BlobStoreOptions) -> Result<Self> {
         let mut index_options = cap_std::fs::File::options();
         let index_options = index_options
-            .create(options.writable)
+            .create(config.writable)
             .read(true)
             .append(true);
 
@@ -73,6 +74,7 @@ impl DirectoryBlobStore {
         }
 
         Ok(Self {
+            config,
             dir,
             index_file: RefCell::new(Box::new(index_file)),
             lookup_id,
@@ -119,6 +121,10 @@ impl BlobStore for DirectoryBlobStore {
     }
 
     fn put(&mut self, blob_data: &mut dyn Read) -> Result<(bool, Blob)> {
+        if !self.config.writable {
+            return Err(crate::BlobStoreError::NotWritable.into());
+        }
+
         // Buffer the blob data in a temporary file:
         let mut temp_file = TempFile::new(&self.dir)?;
         let blob_size = std::io::copy(blob_data, &mut temp_file)?;
@@ -171,6 +177,10 @@ impl BlobStore for DirectoryBlobStore {
     }
 
     fn remove(&mut self, blob_hash: BlobHash) -> Result<bool> {
+        if !self.config.writable {
+            return Err(crate::BlobStoreError::NotWritable.into());
+        }
+
         match self.lookup_id.remove(&blob_hash) {
             None => Ok(false), // not found
             Some(_blob_id) => {

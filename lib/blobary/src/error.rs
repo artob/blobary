@@ -14,6 +14,8 @@ pub enum BlobHashError {
 
 #[derive(Error, Debug)]
 pub enum BlobStoreError {
+    #[error("not writable")]
+    NotWritable,
     #[error("unsupported operation")]
     Unsupported,
     #[error("unimplemented operation: {0}")]

@@ -8,6 +8,7 @@ use redis::Commands;
 use std::{cell::RefCell, io::Read, str::FromStr};
 
 pub struct RedisBlobStore {
+    pub(crate) config: BlobStoreOptions,
     connection: RefCell<redis::Connection>,
     count_key: String,
     index_key: String,
@@ -16,10 +17,11 @@ pub struct RedisBlobStore {
 
 impl RedisBlobStore {
     #[allow(unused)]
-    pub fn open(url: impl AsRef<str>, _options: BlobStoreOptions) -> Result<Self> {
+    pub fn open(url: impl AsRef<str>, config: BlobStoreOptions) -> Result<Self> {
         let client = redis::Client::open(url.as_ref())?;
         let connection = client.get_connection()?;
         Ok(Self {
+            config,
             connection: RefCell::new(connection),
             count_key: "blobs:id".to_string(),
             index_key: "blobs:index".to_string(),
@@ -43,6 +45,10 @@ impl BlobStore for RedisBlobStore {
     }
 
     fn put(&mut self, blob_data: &mut dyn Read) -> Result<(bool, Blob)> {
+        if !self.config.writable {
+            return Err(crate::BlobStoreError::NotWritable.into());
+        }
+
         let mut conn = self.connection.borrow_mut();
         let blob_id: BlobID = match conn.incr(&self.count_key, 1) {
             Ok(value) => value,
@@ -80,6 +86,10 @@ impl BlobStore for RedisBlobStore {
     }
 
     fn remove(&mut self, blob_hash: BlobHash) -> Result<bool> {
+        if !self.config.writable {
+            return Err(crate::BlobStoreError::NotWritable.into());
+        }
+
         match self.hash_to_id(blob_hash)? {
             None => Ok(false), // not found
             Some(blob_id) => {

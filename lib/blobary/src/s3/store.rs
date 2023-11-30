@@ -12,6 +12,7 @@ use std::{
 };
 
 pub struct S3BlobStore {
+    pub(crate) config: BlobStoreOptions,
     bucket: s3::Bucket,
     prefix: String,
 }
@@ -21,7 +22,7 @@ impl S3BlobStore {
     pub fn open(
         bucket: impl AsRef<str>,
         prefix: impl AsRef<str>,
-        _options: BlobStoreOptions,
+        config: BlobStoreOptions,
     ) -> Result<Self> {
         let bucket = s3::Bucket::new(
             bucket.as_ref(),
@@ -29,6 +30,7 @@ impl S3BlobStore {
             Credentials::default()?, // TODO: support other credentials
         )?;
         Ok(Self {
+            config,
             bucket,
             prefix: prefix.as_ref().to_string(),
         })
@@ -83,6 +85,10 @@ impl BlobStore for S3BlobStore {
     }
 
     fn put(&mut self, blob_data: &mut dyn Read) -> Result<(bool, Blob)> {
+        if !self.config.writable {
+            return Err(crate::BlobStoreError::NotWritable.into());
+        }
+
         let mut buffer = Vec::new();
         blob_data.read_to_end(&mut buffer)?;
 
@@ -104,6 +110,10 @@ impl BlobStore for S3BlobStore {
     }
 
     fn remove(&mut self, blob_hash: BlobHash) -> Result<bool> {
+        if !self.config.writable {
+            return Err(crate::BlobStoreError::NotWritable.into());
+        }
+
         let blob_path = format!("{}/{}", self.prefix, blob_hash);
 
         match self.bucket.delete_object(blob_path.as_str()) {
