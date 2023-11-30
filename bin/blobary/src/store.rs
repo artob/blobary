@@ -1,7 +1,9 @@
 // This is free and unencumbered software released into the public domain.
 
 use crate::sysexits::Sysexits;
-use blobary::{BlobStoreOptions, DirectoryBlobStore, EphemeralBlobStore, IndexedBlobStore};
+use blobary::{
+    BlobStoreOptions, DirectoryBlobStore, EphemeralBlobStore, GzipCompressor, IndexedBlobStore,
+};
 use std::env::VarError;
 use url::Url;
 

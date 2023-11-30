@@ -13,7 +13,7 @@ use std::{
     cell::RefCell,
     collections::HashMap,
     fs::create_dir_all,
-    io::{ErrorKind::UnexpectedEof, Read, Seek, SeekFrom, Write},
+    io::{Cursor, ErrorKind::UnexpectedEof, Read, Seek, SeekFrom, Write},
     os::unix::prelude::PermissionsExt,
     path::Path,
     rc::Rc,
@@ -126,13 +126,16 @@ impl BlobStore for DirectoryBlobStore {
         }
 
         // Buffer the blob data in a temporary file:
-        let mut temp_file = TempFile::new(&self.dir)?;
-        let blob_size = std::io::copy(blob_data, &mut temp_file)?;
+        let mut data_file = TempFile::new(&self.dir)?;
+        data_file.as_file().set_permissions(Permissions::from_std(
+            std::fs::Permissions::from_mode(0o444),
+        ))?;
+        let blob_size = std::io::copy(blob_data, &mut data_file)?;
 
         // Compute the BLAKE3 hash for the blob data:
         let mut blob_hasher = BlobHasher::new();
-        temp_file.rewind()?;
-        std::io::copy(&mut temp_file, &mut blob_hasher)?;
+        data_file.rewind()?;
+        std::io::copy(&mut data_file, &mut blob_hasher)?;
 
         // Check if the blob is already in the store:
         let blob_hash = blob_hasher.finalize();
@@ -148,12 +151,30 @@ impl BlobStore for DirectoryBlobStore {
             ));
         }
 
+        // Apply the configured filters to the blob data:
+        if !self.config.filters.is_empty() {
+            let mut input_buffer: Vec<u8> = Vec::new();
+            let mut output_buffer: Vec<u8> = Vec::new();
+            data_file.rewind()?;
+            data_file.read_to_end(&mut output_buffer)?;
+
+            for filter in &self.config.filters {
+                std::mem::swap(&mut input_buffer, &mut output_buffer);
+                let mut input_cursor = Cursor::new(&mut input_buffer);
+                filter.encode(&mut input_cursor, &mut output_buffer)?;
+            }
+
+            data_file.rewind()?;
+            data_file
+                .as_file()
+                .set_len(output_buffer.len().try_into().unwrap())?;
+            data_file.write_all(output_buffer.as_bytes())?;
+        }
+
         // Rename the temporary file to its final name:
         let blob_path = encode_into_path(blob_hash);
-        temp_file.as_file().set_permissions(Permissions::from_std(
-            std::fs::Permissions::from_mode(0o444),
-        ))?;
-        temp_file.replace(blob_path)?;
+        data_file.flush()?;
+        data_file.replace(blob_path)?;
 
         let blob_id: BlobID = self.lookup_id.len() + 1;
         let blob_record = PersistentBlobRecord(blob_hash.into(), blob_size.into());
